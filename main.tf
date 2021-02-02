@@ -9,7 +9,6 @@ module "eks_mod" {
   source = "./modules/eks"
   count = var.do_eks ? 1 : 0
   name = var.name
-  providers = provider.aws
 }
 
 module "elasticache_mod" {
