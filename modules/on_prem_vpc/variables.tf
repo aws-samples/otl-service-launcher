@@ -14,28 +14,12 @@ variable "tags" {
 
 
 # -----------------------------------------------------------------------------
-# EMR variables
+# On-premises VPC variables
 # -----------------------------------------------------------------------------
-variable "region_public_subnet_ids" {
-  type = list(string)
-}
-
-variable "outpost_private_subnet_ids" {
-  type = list(string)
-}
-
-variable "kubernetes_version" {
+variable "on_prem_vpc_cidr" {
   type = string
 }
 
-variable "service_ipv4_cidr" {
-  type = string
-}
-
-variable "instance_types" {
-  type = list(string)
-}
-
-variable "node_count" {
-  type = number
+variable "outpost_coip_pool_cidrs" {
+  type = set(string)
 }

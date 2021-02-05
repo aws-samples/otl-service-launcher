@@ -14,28 +14,20 @@ variable "tags" {
 
 
 # -----------------------------------------------------------------------------
-# EMR variables
+# Cloud9 variables
 # -----------------------------------------------------------------------------
-variable "region_public_subnet_ids" {
-  type = list(string)
-}
-
-variable "outpost_private_subnet_ids" {
-  type = list(string)
-}
-
-variable "kubernetes_version" {
+variable "location" {
   type = string
 }
 
-variable "service_ipv4_cidr" {
+variable "subnet_id" {
   type = string
 }
 
-variable "instance_types" {
-  type = list(string)
+variable "instance_type" {
+  type = string
 }
 
-variable "node_count" {
+variable "automatic_stop_time_minutes" {
   type = number
 }

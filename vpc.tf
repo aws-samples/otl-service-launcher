@@ -1,366 +1,347 @@
+# -----------------------------------------------------------------------------
+# Main VPC - Addressing
+# -----------------------------------------------------------------------------
+# Generate a random number for the default VPC CIDR to help avoid conflicts
+resource "random_integer" "main_vpc_cidr" {
+  min = 0
+  max = 254
+}
+
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+locals {
+  main_vpc_cidr = coalesce(var.main_vpc_cidr, cidrsubnet("10.0.0.0/8", 8, random_integer.main_vpc_cidr.result))
+
+  # region_az_1 is the AZ that provides connectivity to the Outpost
+  region_az_1 = data.aws_outposts_outpost.selected.availability_zone
+
+  # region_az_2 is selected from the other available AZs - not servicing the
+  # Outpost. This AZ is used by services (like EKS) that require two in-region
+  # autonomous zones.
+  region_az_2 = coalesce(setsubtract(data.aws_availability_zones.available.names, [local.region_az_1])...)
+
+  # Generate AZ/Outpost CIDR allocations
+  az_cidr_allocation = cidrsubnets(local.main_vpc_cidr, 4, 4, 4)
+  region_az_1_cidr   = local.az_cidr_allocation[0]
+  region_az_2_cidr   = local.az_cidr_allocation[1]
+  outpost_cidr       = local.az_cidr_allocation[2]
+
+  # Generate subnet CIDR allocactions
+  # Allocation Use: [public, available, available, available, private]
+  region_az_1_subnets        = cidrsubnets(local.region_az_1_cidr, 3, 3, 3, 3, 1)
+  region_az_1_public_subnet  = local.region_az_1_subnets[0]
+  region_az_1_private_subnet = local.region_az_1_subnets[4]
+
+  region_az_2_subnets        = cidrsubnets(local.region_az_2_cidr, 3, 3, 3, 3, 1)
+  region_az_2_public_subnet  = local.region_az_2_subnets[0]
+  region_az_2_private_subnet = local.region_az_2_subnets[4]
+
+  outpost_subnets        = cidrsubnets(local.outpost_cidr, 3, 3, 3, 3, 1)
+  outpost_public_subnet  = local.outpost_subnets[0]
+  outpost_private_subnet = local.outpost_subnets[4]
+}
+
+# -----------------------------------------------------------------------------
+# Main VPC
+# -----------------------------------------------------------------------------
 resource "aws_vpc" "main_vpc" {
-  cidr_block = var.op_cidr
+  cidr_block           = local.main_vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
-  tags = {
-    Name = join("-",[var.name, "op-vpc"])
-  }
+
+  tags = merge(local.tags, {
+    Name = "${var.username}-main-vpc"
+  })
 }
 
-resource "aws_vpc" "on_prem_vpc" {
-  cidr_block = var.on_prem_cidr
-  enable_dns_hostnames = true
-  enable_dns_support = true
-  tags = {
-    Name = join("-",[var.name, "on-prem-vpc"])
-  }
+
+# Subnets
+resource "aws_subnet" "region_az_1_public" {
+  vpc_id            = aws_vpc.main_vpc.id
+  availability_zone = local.region_az_1
+  cidr_block        = local.region_az_1_public_subnet
+
+  tags = merge(local.tags, {
+    Name = "${var.username}-region-public-subnet-1"
+  })
 }
 
-resource "aws_subnet" "on_prem_public" {
-    vpc_id = aws_vpc.on_prem_vpc.id
-    cidr_block = cidrsubnet(var.on_prem_cidr, 2, 0)
-    tags = {
-      Name = join("-",[var.name, "on-prem-public"])
-    }
+resource "aws_subnet" "region_az_2_public" {
+  vpc_id            = aws_vpc.main_vpc.id
+  availability_zone = local.region_az_2
+  cidr_block        = local.region_az_2_public_subnet
+
+  tags = merge(local.tags, {
+    Name = "${var.username}-region-public-subnet-2"
+  })
 }
 
-resource "aws_subnet" "on_prem_private" {
-    vpc_id = aws_vpc.on_prem_vpc.id
-    cidr_block = cidrsubnet(var.on_prem_cidr, 2, 1)
-    tags = {
-      Name = join("-",[var.name, "on-prem-private"])
-    }
+resource "aws_subnet" "region_az_1_private" {
+  vpc_id            = aws_vpc.main_vpc.id
+  availability_zone = local.region_az_1
+  cidr_block        = local.region_az_1_private_subnet
+
+  tags = merge(local.tags, {
+    Name = "${var.username}-region-private-subnet-1"
+  })
 }
 
-resource "aws_internet_gateway" "on_prem_igw" {
-  vpc_id = aws_vpc.on_prem_vpc.id
-  tags = {
-    Name = join("-",[var.name, "on-prem-igw"])
-  }
+resource "aws_subnet" "region_az_2_private" {
+  vpc_id            = aws_vpc.main_vpc.id
+  availability_zone = local.region_az_2
+  cidr_block        = local.region_az_2_private_subnet
+
+  tags = merge(local.tags, {
+    Name = "${var.username}-region-private-subnet-2"
+  })
 }
 
-resource "aws_vpn_gateway" "on_prem_vgw" {
-  vpc_id = aws_vpc.on_prem_vpc.id
-  tags = {
-    Name = join("-",[var.name, "on-prem-vgw"])
-  }
-}
 
-resource "aws_route_table" "on_prem_public_routes" {
-  vpc_id = aws_vpc.on_prem_vpc.id
-  tags = {
-    Name = join("-",[var.name, "on-prem-public-routes"])
-  }
-}
-
-resource "aws_route" "igw_route_on_prem" {
-  route_table_id = aws_route_table.on_prem_public_routes.id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id = aws_internet_gateway.on_prem_igw.id
-}
-
-resource "aws_route" "vgw_route_on_prem" {
-  route_table_id = aws_route_table.on_prem_public_routes.id
-  destination_cidr_block = sort(data.aws_ec2_coip_pool.op_coip_pool.pool_cidrs)[0]
-  gateway_id = aws_vpn_gateway.on_prem_vgw.id
-}
-
-resource "aws_route" "vgw_route_on_prem_private" {
-  route_table_id = aws_route_table.on_prem_private_routes.id
-  destination_cidr_block = sort(data.aws_ec2_coip_pool.op_coip_pool.pool_cidrs)[0]
-  gateway_id = aws_vpn_gateway.on_prem_vgw.id
-}
-
-resource "aws_route_table_association" "on_prem_public_association" {
-  subnet_id      = aws_subnet.on_prem_public.id
-  route_table_id = aws_route_table.on_prem_public_routes.id
-}
-
-resource "aws_eip" "on_prem_nat_eip" {
-  vpc = true
-  depends_on = [aws_internet_gateway.on_prem_igw]
-  tags = {
-    Name = join("-",[var.name, "on-prem-nat-eip"])
-  }
-}
-
-resource "aws_nat_gateway" "on_prem_nat_gw" {
-  allocation_id = aws_eip.on_prem_nat_eip.id
-  subnet_id = aws_subnet.on_prem_public.id
-  depends_on = [aws_internet_gateway.on_prem_igw]
-  tags = {
-    Name = join("-",[var.name, "on-prem-nat-gw"])
-  }
-}
-
-resource "aws_route_table" "on_prem_private_routes" {
-  vpc_id = aws_vpc.on_prem_vpc.id
-  tags = {
-    Name = join("-",[var.name, "on-prem-private-routes"])
-  }
-}
-
-resource "aws_route_table_association" "on_prem_private_association" {
-  subnet_id      = aws_subnet.on_prem_private.id
-  route_table_id = aws_route_table.on_prem_private_routes.id
-}
-
-resource "aws_route" "nat_route_on_prem" {
-  route_table_id = aws_route_table.on_prem_private_routes.id
-  destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id = aws_nat_gateway.on_prem_nat_gw.id
-}
-
-resource "aws_subnet" "region_public" {
-    vpc_id = aws_vpc.main_vpc.id
-    cidr_block = cidrsubnet(var.op_cidr, 4, 0)
-    availability_zone = data.aws_outposts_outpost.op.availability_zone
-    tags = {
-      Name = join("-",[var.name, "region-public-subnet"])
-    }
-}
-
-resource "aws_subnet" "region_public_2" {
-    vpc_id = aws_vpc.main_vpc.id
-    cidr_block = cidrsubnet(var.op_cidr, 4, 5)
-    availability_zone = data.aws_availability_zones.available.names[0] != data.aws_outposts_outpost.op.availability_zone ? data.aws_availability_zones.available.names[0] : data.aws_availability_zones.available.names[1]
-    tags = {
-      Name = join("-",[var.name, "region-public-subnet-2"])
-    }
-}
-
-resource "aws_subnet" "region_private" {
-    vpc_id = aws_vpc.main_vpc.id
-    cidr_block = cidrsubnet(var.op_cidr, 4, 1)
-    tags = {
-      Name = join("-",[var.name, "region-private-subnet"])
-    }
-}
-
-resource "aws_subnet" "op_public" {
-    vpc_id = aws_vpc.main_vpc.id
-    cidr_block = cidrsubnet(var.op_cidr, 4, 2)
-    outpost_arn = data.aws_outposts_outpost.op.arn
-    availability_zone = data.aws_outposts_outpost.op.availability_zone
-    tags = {
-      Name = join("-",[var.name, "op-public-subnet"])
-    }
-}
-
-resource "aws_subnet" "op_private" {
-    vpc_id = aws_vpc.main_vpc.id
-    cidr_block = cidrsubnet(var.op_cidr, 4, 3)
-    outpost_arn = data.aws_outposts_outpost.op.arn
-    availability_zone = data.aws_outposts_outpost.op.availability_zone
-    tags = {
-      Name = join("-",[var.name, "op-private-subnet-1"])
-    }
-}
-
-resource "aws_subnet" "op_private_2" {
-    vpc_id = aws_vpc.main_vpc.id
-    cidr_block = cidrsubnet(var.op_cidr, 4, 4)
-    outpost_arn = data.aws_outposts_outpost.op.arn
-    availability_zone = data.aws_outposts_outpost.op.availability_zone
-    tags = {
-      Name = join("-",[var.name, "op-private-subnet-2"])
-    }
-}
-
-resource "aws_internet_gateway" "op_igw" {
+# -----------------------------------------------------------------------------
+# Internet Gateway (igw)
+# -----------------------------------------------------------------------------
+resource "aws_internet_gateway" "main_vpc_igw" {
   vpc_id = aws_vpc.main_vpc.id
-  tags = {
-    Name = join("-",[var.name, "op-igw"])
-  }
+
+  tags = merge(local.tags, {
+    Name = "${var.username}-main-vpc-igw"
+  })
 }
 
+
+# -----------------------------------------------------------------------------
+# NAT Gateway
+# -----------------------------------------------------------------------------
+resource "aws_eip" "main_vpc_nat_gw_eip" {
+  vpc        = true
+  depends_on = [aws_internet_gateway.main_vpc_igw]
+
+  tags = merge(local.tags, {
+    Name = "${var.username}-main-vpc-nat-gw-eip"
+  })
+}
+
+resource "aws_nat_gateway" "main_vpc_nat_gw" {
+  allocation_id = aws_eip.main_vpc_nat_gw_eip.id
+  subnet_id     = aws_subnet.region_az_1_public.id
+  depends_on    = [aws_internet_gateway.main_vpc_igw]
+
+  tags = merge(local.tags, {
+    Name = "${var.username}-main-vpc-nat-gw"
+  })
+}
+
+
+# -----------------------------------------------------------------------------
+# Region route tables
+# -----------------------------------------------------------------------------
 resource "aws_route_table" "region_public_routes" {
   vpc_id = aws_vpc.main_vpc.id
-  tags = {
-    Name = join("-",[var.name, "region-public-route-table"])
-  }
+
+  tags = merge(local.tags, {
+    Name = "${var.username}-region-public-route-table"
+  })
 }
 
-resource "aws_route_table_association" "region_public_association" {
-  subnet_id      = aws_subnet.region_public.id
+resource "aws_route_table_association" "region_az_1_public_subnet" {
+  subnet_id      = aws_subnet.region_az_1_public.id
   route_table_id = aws_route_table.region_public_routes.id
 }
 
-resource "aws_route_table_association" "region_public_association_2" {
-  subnet_id      = aws_subnet.region_public_2.id
+resource "aws_route_table_association" "region_az_2_public_subnet" {
+  subnet_id      = aws_subnet.region_az_2_public.id
   route_table_id = aws_route_table.region_public_routes.id
 }
+
 
 resource "aws_route_table" "region_private_routes" {
   vpc_id = aws_vpc.main_vpc.id
-  tags = {
-    Name = join("-",[var.name, "region-private-routes"])
-  }
+
+  tags = merge(local.tags, {
+    Name = "${var.username}-region-private-route-table"
+  })
 }
 
-resource "aws_route_table_association" "region_private_association" {
-  subnet_id      = aws_subnet.region_private.id
+resource "aws_route_table_association" "region_az_1_private_subnet" {
+  subnet_id      = aws_subnet.region_az_1_private.id
   route_table_id = aws_route_table.region_private_routes.id
 }
 
-resource "aws_route_table" "op_public_routes" {
+resource "aws_route_table_association" "region_az_2_private_subnet" {
+  subnet_id      = aws_subnet.region_az_2_private.id
+  route_table_id = aws_route_table.region_private_routes.id
+}
+
+
+# Routes
+resource "aws_route" "region_igw_route" {
+  route_table_id         = aws_route_table.region_public_routes.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.main_vpc_igw.id
+}
+
+resource "aws_route" "region_nat_gw_route" {
+  route_table_id         = aws_route_table.region_private_routes.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.main_vpc_nat_gw.id
+}
+
+
+# -----------------------------------------------------------------------------
+# Main VPC - Outpost resources
+# -----------------------------------------------------------------------------
+resource "aws_subnet" "outpost_public" {
+  vpc_id            = aws_vpc.main_vpc.id
+  availability_zone = data.aws_outposts_outpost.selected.availability_zone
+  outpost_arn       = data.aws_outposts_outpost.selected.arn
+  cidr_block        = local.outpost_public_subnet
+
+  tags = merge(local.tags, {
+    Name = "${var.username}-outpost-public-subnet"
+  })
+}
+
+resource "aws_subnet" "outpost_private" {
+  vpc_id            = aws_vpc.main_vpc.id
+  availability_zone = data.aws_outposts_outpost.selected.availability_zone
+  outpost_arn       = data.aws_outposts_outpost.selected.arn
+  cidr_block        = local.outpost_private_subnet
+
+  tags = merge(local.tags, {
+    Name = "${var.username}-outpost-private-subnet"
+  })
+}
+
+
+# -----------------------------------------------------------------------------
+# Outpost route tables
+# -----------------------------------------------------------------------------
+resource "aws_route_table" "outpost_public_routes" {
   vpc_id = aws_vpc.main_vpc.id
-  tags = {
-    Name = join("-",[var.name, "op-public-routes"])
-  }
+
+  tags = merge(local.tags, {
+    Name = "${var.username}-outpost-public-route-table"
+  })
 }
 
-resource "aws_route_table_association" "op_public_association" {
-  subnet_id      = aws_subnet.op_public.id
-  route_table_id = aws_route_table.op_public_routes.id
+resource "aws_route_table_association" "outpost_public_subnet" {
+  subnet_id      = aws_subnet.outpost_public.id
+  route_table_id = aws_route_table.outpost_public_routes.id
 }
 
-resource "aws_route_table" "op_private_routes" {
+
+resource "aws_route_table" "outpost_private_routes" {
   vpc_id = aws_vpc.main_vpc.id
-  tags = {
-    Name = join("-",[var.name, "op-private-routes"])
-  }
+
+  tags = merge(local.tags, {
+    Name = "${var.username}-outpost-private-routes"
+  })
 }
 
-resource "aws_route_table_association" "op_private_association" {
-  subnet_id      = aws_subnet.op_private.id
-  route_table_id = aws_route_table.op_private_routes.id
+resource "aws_route_table_association" "outpost_private_subnet" {
+  subnet_id      = aws_subnet.outpost_private.id
+  route_table_id = aws_route_table.outpost_private_routes.id
 }
 
-resource "aws_route_table_association" "op_private_2_association" {
-  subnet_id = aws_subnet.op_private_2.id
-  route_table_id = aws_route_table.op_private_routes.id
-}
-
-resource "aws_route" "igw_route_region" {
-  route_table_id = aws_route_table.region_public_routes.id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id = aws_internet_gateway.op_igw.id
-}
-
-resource "aws_route" "igw_route_op" {
-  route_table_id = aws_route_table.op_public_routes.id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id = aws_internet_gateway.op_igw.id
-}
-
-resource "aws_route" "lgw_route_op" {
-  route_table_id = aws_route_table.op_public_routes.id
-  destination_cidr_block = var.on_prem_cidr
-  local_gateway_id = data.aws_ec2_local_gateway_route_table.lgw_rtb.local_gateway_id
-  depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
-}
-
-resource "aws_eip" "op_nat_eip" {
-  vpc = true
-  depends_on = [aws_internet_gateway.op_igw]
-  tags = {
-    Name = join("-",[var.name, "op-nat-eip"])
-  }
-}
-
-resource "aws_nat_gateway" "op_nat_gw" {
-  allocation_id = aws_eip.op_nat_eip.id
-  subnet_id = aws_subnet.region_public.id
-  depends_on = [aws_internet_gateway.op_igw]
-  tags = {
-    Name = join("-",[var.name, "op-nat-gw"])
-  }
-}
-
-resource "aws_route" "nat_route_op" {
-  route_table_id = aws_route_table.op_private_routes.id
-  destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id = aws_nat_gateway.op_nat_gw.id
-}
-
+# Local gateway (lgw) route table association
 resource "aws_ec2_local_gateway_route_table_vpc_association" "lgw_association" {
-  local_gateway_route_table_id = data.aws_ec2_local_gateway_route_table.lgw_rtb.id
   vpc_id                       = aws_vpc.main_vpc.id
+  local_gateway_route_table_id = data.aws_ec2_local_gateway_route_table.lgw_rtb.id
 }
 
-resource "aws_cloud9_environment_ec2" "op_region_bastion" {
-  instance_type = "m5.xlarge"
-  name = join("-",[var.name, "region-c9-bastion"])
-  automatic_stop_time_minutes = 240
-  subnet_id = aws_subnet.region_public.id
+
+# Routes
+resource "aws_route" "outpost_igw_route" {
+  route_table_id         = aws_route_table.outpost_public_routes.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.main_vpc_igw.id
 }
 
-resource "aws_cloud9_environment_ec2" "on_prem_bastion" {
-  instance_type = "m5.xlarge"
-  name = join("-",[var.name, "on-prem-c9-bastion"])
-  automatic_stop_time_minutes = 240
-  subnet_id = aws_subnet.on_prem_public.id
+resource "aws_route" "outpost_nat_gw_route" {
+  route_table_id         = aws_route_table.outpost_private_routes.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.main_vpc_nat_gw.id
 }
 
-resource "aws_security_group" "on_prem_beta_sg" {
-  name = join("-",[var.name, "on-prem-beta-sg"])
-  description = "allow traffic from itself"
-  vpc_id      = aws_vpc.on_prem_vpc.id
-  ingress {
-    description = "all traffic from itself"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    self = true
-  }
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+resource "aws_route" "outpost_public_lgw_route" {
+  count = var.on_prem_vpc ? 1 : 0
+
+  route_table_id         = aws_route_table.outpost_public_routes.id
+  destination_cidr_block = module.on_prem_vpc[0].on_prem_vpc_cidr
+  local_gateway_id       = data.aws_ec2_local_gateway_route_table.lgw_rtb.local_gateway_id
+  depends_on             = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
 }
 
-resource "aws_security_group" "on_prem_lgw_sg" {
-  name = join("-",[var.name, "on-prem-lgw-sg"])
-  description = "allow traffic from the outpost"
-  vpc_id      = aws_vpc.on_prem_vpc.id
-  ingress {
-    description = "all traffic from the outpost vpc range"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [var.op_cidr]
-  }
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+resource "aws_route" "outpost_private_lgw_route" {
+  count = var.on_prem_vpc ? 1 : 0
+
+  route_table_id         = aws_route_table.outpost_private_routes.id
+  destination_cidr_block = module.on_prem_vpc[0].on_prem_vpc_cidr
+  local_gateway_id       = data.aws_ec2_local_gateway_route_table.lgw_rtb.local_gateway_id
+  depends_on             = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
 }
 
-resource "aws_security_group" "op_alpha_sg" {
-  name = join("-",[var.name, "op-alpha-sg"])
-  description = "allow traffic from itself"
+
+# -----------------------------------------------------------------------------
+# Security groups
+# -----------------------------------------------------------------------------
+resource "aws_security_group" "alpha" {
+  name        = "${var.username}-alpha-sg"
+  description = "Allow all communication within the alpha security group"
   vpc_id      = aws_vpc.main_vpc.id
+
   ingress {
-    description = "all traffic from itself"
+    description = "Allow all traffic sourced from this security group"
+    protocol    = "-1"
     from_port   = 0
     to_port     = 0
-    protocol    = "-1"
-    self = true
+    self        = true
   }
+
   egress {
+    protocol    = "-1"
     from_port   = 0
     to_port     = 0
-    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
-resource "aws_security_group" "op_lgw_sg" {
-  name = join("-",[var.name, "op-lgw-sg"])
-  description = "allow traffic from on-prem cidr"
+resource "aws_security_group" "beta" {
+  name        = "${var.username}-beta-sg"
+  description = "Allow all communication within the beta security group"
   vpc_id      = aws_vpc.main_vpc.id
+
   ingress {
-    description = "all traffic from on-prem cidr"
+    description = "Allow all traffic sourced from this security group"
+    protocol    = "-1"
+    from_port   = 0
+    to_port     = 0
+    self        = true
+  }
+
+  egress {
+    protocol    = "-1"
+    from_port   = 0
+    to_port     = 0
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "outpost" {
+  name        = "${var.username}-outpost-sg"
+  description = "Allow traffic from the Outpost"
+  vpc_id      = aws_vpc.main_vpc.id
+
+  ingress {
+    description = "All traffic from the outpost CIDR range"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = [var.on_prem_cidr]
+    cidr_blocks = [local.outpost_cidr]
   }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -368,4 +349,3 @@ resource "aws_security_group" "op_lgw_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
-

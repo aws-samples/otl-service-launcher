@@ -1,40 +1,29 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = ">= 3.0"
-    }
-  }
+resource "random_string" "cluster_id_suffix" {
+  length  = 6
+  upper   = false
+  lower   = true
+  number  = false
+  special = false
 }
+
 
 resource "aws_elasticache_subnet_group" "elasticache_subnets" {
-  name       = join("-",[var.name, "elasticache-subnets"])
-  subnet_ids = [aws_subnet.op_private.id]
+  name       = "${var.username}-elasticache-${var.engine}-subnets"
+  subnet_ids = var.subnet_ids
 }
 
-resource "aws_elasticache_cluster" "memcached_cluster" {
-  cluster_id           = "memcached-cluster"
-  engine               = "memcached"
-  node_type            = "cache.r5.xlarge"
-  num_cache_nodes      = 2
-  parameter_group_name = "default.memcached1.6"
-  port                 = 11211
-  subnet_group_name    = aws_elasticache_subnet_group.elasticache_subnets.name
-  tags = {
-      Name = join("-",[var.name, "memcached-cluster"])
-    }
-}
+resource "aws_elasticache_cluster" "elasticache_cluster" {
+  subnet_group_name = aws_elasticache_subnet_group.elasticache_subnets.name
 
-resource "aws_elasticache_cluster" "redis_cluster" {
-  cluster_id           = "redis-cluster"
-  engine               = "redis"
-  node_type            = "cache.r5.xlarge"
-  num_cache_nodes      = 1
-  parameter_group_name = "default.redis3.2"
-  engine_version       = "3.2.10"
-  port                 = 6379
-  subnet_group_name    = aws_elasticache_subnet_group.elasticache_subnets.name
-  tags = {
-      Name = join("-",[var.name, "redis-cluster"])
-    }
+  cluster_id = "${var.username}-rds-${var.engine}-${random_string.cluster_id_suffix.result}"
+
+  engine               = var.engine
+  engine_version       = var.engine_version
+  parameter_group_name = var.parameter_group_name
+  node_type            = var.node_type
+  num_cache_nodes      = var.num_cache_nodes
+
+  tags = merge(var.tags, {
+    Name = "${var.username}-elasticache-${var.engine}-instance"
+  })
 }

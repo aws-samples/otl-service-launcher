@@ -1,39 +1,28 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = ">= 3.0"
-    }
-  }
-}
-
-resource "aws_emr_cluster" "emr_cluster" {
-  name          = join("-",[var.name, "emr-cluster"])
-  release_label = "emr-5.32.0"
+resource "aws_emr_cluster" "outpost_cluster" {
+  name          = "${var.username}-emr-cluster"
+  release_label = var.release_label
   applications  = ["Spark"]
 
   ec2_attributes {
-    subnet_id                         = aws_subnet.op_public.id
-    emr_managed_master_security_group = aws_security_group.op_alpha_sg.id
-    emr_managed_slave_security_group  = aws_security_group.op_lgw_sg.id
+    subnet_id                         = var.subnet_id
+    emr_managed_master_security_group = aws_security_group.emr_master.id
+    emr_managed_slave_security_group  = aws_security_group.emr_core.id
+    service_access_security_group     = aws_security_group.emr_service_access.id
     instance_profile                  = aws_iam_instance_profile.emr_profile.arn
   }
 
   master_instance_group {
-    instance_type = "m5.xlarge"
+    instance_type = var.master_instance_type
   }
 
   core_instance_group {
-    instance_count = 1
-    instance_type  = "m5.xlarge"
+    instance_type  = var.core_instance_type
+    instance_count = var.core_instance_count
   }
 
-  tags = {
-    role     = "rolename"
-    dns_zone = "env_zone"
-    env      = "env"
-    name     = join("-",[var.name, "emr-cluster"])
-  }
+  tags = merge(var.tags, {
+    Name = "${var.username}-emr-cluster"
+  })
 
   bootstrap_action {
     path = "s3://elasticmapreduce/bootstrap-actions/run-if"
@@ -41,196 +30,176 @@ resource "aws_emr_cluster" "emr_cluster" {
     args = ["instance.isMaster=true", "echo running on master node"]
   }
 
-  configurations_json = <<EOF
-  [
-    {
-      "Classification": "hadoop-env",
-      "Configurations": [
-        {
-          "Classification": "export",
-          "Properties": {
-            "JAVA_HOME": "/usr/lib/jvm/java-1.8.0"
-          }
-        }
-      ],
-      "Properties": {}
-    },
-    {
-      "Classification": "spark-env",
-      "Configurations": [
-        {
-          "Classification": "export",
-          "Properties": {
-            "JAVA_HOME": "/usr/lib/jvm/java-1.8.0"
-          }
-        }
-      ],
-      "Properties": {}
-    }
-  ]
-EOF
+  configurations_json = file("${path.module}/emr_cluster_configurations.json")
 
   service_role = aws_iam_role.iam_emr_service_role.arn
 }
 
-###
 
-# IAM Role setups
+# -----------------------------------------------------------------------------
+# Security groups
+# -----------------------------------------------------------------------------
 
-###
+# EMR Master security group
+# Configure the security group rules as separate resources to breck the circular references
+resource "aws_security_group" "emr_master" {
+  name        = "${var.username}-emr-master-sg"
+  description = "Amazon EMR-Managed Security Group for the Master Instance (Private Subnets)"
+  vpc_id      = var.main_vpc_id
 
-# IAM role for EMR Service
+  tags = var.tags
+}
+
+resource "aws_security_group_rule" "emr_master_self" {
+  security_group_id = aws_security_group.emr_master.id
+  type              = "ingress"
+
+  description = "Allow all traffic from the EMR Master (this) security group"
+  protocol    = "-1"
+  from_port   = 0
+  to_port     = 0
+  self        = true
+}
+
+resource "aws_security_group_rule" "emr_master_core" {
+  security_group_id = aws_security_group.emr_master.id
+  type              = "ingress"
+
+  description              = "Allow all traffic from the EMR Master security group"
+  protocol                 = "-1"
+  from_port                = 0
+  to_port                  = 0
+  source_security_group_id = aws_security_group.emr_master.id
+}
+resource "aws_security_group_rule" "emr_master_service_access" {
+  security_group_id = aws_security_group.emr_master.id
+  type              = "ingress"
+
+  description              = "Allow HTTPS traffic on port 8443 from the EMR Service Access security group"
+  protocol                 = "tcp"
+  from_port                = 8443
+  to_port                  = 8443
+  source_security_group_id = aws_security_group.emr_service_access.id
+}
+
+resource "aws_security_group_rule" "emr_master_outbound" {
+  security_group_id = aws_security_group.emr_master.id
+  type              = "egress"
+
+  description = "Allow all outbound traffic"
+  protocol    = "-1"
+  from_port   = 0
+  to_port     = 0
+  cidr_blocks = ["0.0.0.0/0"]
+}
+
+
+# EMR Core security group
+# Configure the security group rules as separate resources to breck the circular references
+resource "aws_security_group" "emr_core" {
+  name        = "${var.username}-emr-core-sg"
+  description = "Amazon EMR-Managed Security Group for Core and Task Instances (Private Subnets)"
+  vpc_id      = var.main_vpc_id
+
+  tags = var.tags
+}
+
+resource "aws_security_group_rule" "emr_core_self" {
+  security_group_id = aws_security_group.emr_core.id
+  type              = "ingress"
+
+  description = "Allow all traffic from the EMR Core (this) security group"
+  protocol    = "-1"
+  from_port   = 0
+  to_port     = 0
+  self        = true
+}
+
+resource "aws_security_group_rule" "emr_core_master" {
+  security_group_id = aws_security_group.emr_core.id
+  type              = "ingress"
+
+  description              = "Allow all traffic from the EMR Master security group"
+  protocol                 = "-1"
+  from_port                = 0
+  to_port                  = 0
+  source_security_group_id = aws_security_group.emr_master.id
+}
+resource "aws_security_group_rule" "emr_core_service_access" {
+  security_group_id = aws_security_group.emr_core.id
+  type              = "ingress"
+
+  description              = "Allow HTTPS traffic on port 8443 from the EMR Service Access security group"
+  protocol                 = "tcp"
+  from_port                = 8443
+  to_port                  = 8443
+  source_security_group_id = aws_security_group.emr_service_access.id
+}
+
+
+# EMR Service Access security group
+resource "aws_security_group" "emr_service_access" {
+  name        = "${var.username}-emr-service-access-sg"
+  description = "Allow all traffic from the main and on-premises VPCs."
+  vpc_id      = var.main_vpc_id
+
+  ingress {
+    description     = "Allow HTTPS traffic on port 9443 from the EMR Master security group"
+    protocol        = "tcp"
+    from_port       = 9443
+    to_port         = 9443
+    security_groups = [aws_security_group.emr_master.id]
+  }
+
+  egress {
+    description = "Allow HTTPS traffic on port 8443 to the EMR Master and Core security groups"
+    protocol    = "tcp"
+    from_port   = 8443
+    to_port     = 8443
+    security_groups = [
+      aws_security_group.emr_master.id,
+      aws_security_group.emr_core.id,
+    ]
+  }
+
+  tags = var.tags
+}
+
+
+# -----------------------------------------------------------------------------
+# IAM roles and policies
+# -----------------------------------------------------------------------------
+
+# IAM role for the EMR Service
 resource "aws_iam_role" "iam_emr_service_role" {
-  name = "iam_emr_service_role"
+  name               = "${var.username}_iam_emr_service_role"
+  assume_role_policy = file("${path.module}/iam_emr_assume_role_policy.json")
 
-  assume_role_policy = <<EOF
-{
-  "Version": "2008-10-17",
-  "Statement": [
-    {
-      "Sid": "",
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "elasticmapreduce.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-EOF
+  tags = var.tags
 }
 
-resource "aws_iam_role_policy" "iam_emr_service_policy" {
-  name = "iam_emr_service_policy"
-  role = aws_iam_role.iam_emr_service_role.id
-
-  policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [{
-        "Effect": "Allow",
-        "Resource": "*",
-        "Action": [
-            "ec2:AuthorizeSecurityGroupEgress",
-            "ec2:AuthorizeSecurityGroupIngress",
-            "ec2:CancelSpotInstanceRequests",
-            "ec2:CreateNetworkInterface",
-            "ec2:CreateSecurityGroup",
-            "ec2:CreateTags",
-            "ec2:DeleteNetworkInterface",
-            "ec2:DeleteSecurityGroup",
-            "ec2:DeleteTags",
-            "ec2:DescribeAvailabilityZones",
-            "ec2:DescribeAccountAttributes",
-            "ec2:DescribeDhcpOptions",
-            "ec2:DescribeInstanceStatus",
-            "ec2:DescribeInstances",
-            "ec2:DescribeKeyPairs",
-            "ec2:DescribeNetworkAcls",
-            "ec2:DescribeNetworkInterfaces",
-            "ec2:DescribePrefixLists",
-            "ec2:DescribeRouteTables",
-            "ec2:DescribeSecurityGroups",
-            "ec2:DescribeSpotInstanceRequests",
-            "ec2:DescribeSpotPriceHistory",
-            "ec2:DescribeSubnets",
-            "ec2:DescribeVpcAttribute",
-            "ec2:DescribeVpcEndpoints",
-            "ec2:DescribeVpcEndpointServices",
-            "ec2:DescribeVpcs",
-            "ec2:DetachNetworkInterface",
-            "ec2:ModifyImageAttribute",
-            "ec2:ModifyInstanceAttribute",
-            "ec2:RequestSpotInstances",
-            "ec2:RevokeSecurityGroupEgress",
-            "ec2:RunInstances",
-            "ec2:TerminateInstances",
-            "ec2:DeleteVolume",
-            "ec2:DescribeVolumeStatus",
-            "ec2:DescribeVolumes",
-            "ec2:DetachVolume",
-            "iam:GetRole",
-            "iam:GetRolePolicy",
-            "iam:ListInstanceProfiles",
-            "iam:ListRolePolicies",
-            "iam:PassRole",
-            "s3:CreateBucket",
-            "s3:Get*",
-            "s3:List*",
-            "sdb:BatchPutAttributes",
-            "sdb:Select",
-            "sqs:CreateQueue",
-            "sqs:Delete*",
-            "sqs:GetQueue*",
-            "sqs:PurgeQueue",
-            "sqs:ReceiveMessage"
-        ]
-    }]
-}
-EOF
+resource "aws_iam_role_policy" "iam_emr_service_role_policy" {
+  name   = "iam_emr_service_policy"
+  role   = aws_iam_role.iam_emr_service_role.id
+  policy = file("${path.module}/iam_emr_service_role_policy.json")
 }
 
-# IAM Role for EC2 Instance Profile
-resource "aws_iam_role" "iam_emr_profile_role" {
-  name = "iam_emr_profile_role"
 
-  assume_role_policy = <<EOF
-{
-  "Version": "2008-10-17",
-  "Statement": [
-    {
-      "Sid": "",
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "ec2.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-EOF
-}
-
+# IAM Role for the EC2 instance profile
 resource "aws_iam_instance_profile" "emr_profile" {
-  name = "emr_profile"
+  name = "${var.username}_emr_profile"
   role = aws_iam_role.iam_emr_profile_role.name
 }
 
-resource "aws_iam_role_policy" "iam_emr_profile_policy" {
-  name = "iam_emr_profile_policy"
-  role = aws_iam_role.iam_emr_profile_role.id
+resource "aws_iam_role" "iam_emr_profile_role" {
+  name               = "${var.username}_iam_emr_profile_role"
+  assume_role_policy = file("${path.module}/iam_ec2_assume_role_policy.json")
 
-  policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [{
-        "Effect": "Allow",
-        "Resource": "*",
-        "Action": [
-            "cloudwatch:*",
-            "dynamodb:*",
-            "ec2:Describe*",
-            "elasticmapreduce:Describe*",
-            "elasticmapreduce:ListBootstrapActions",
-            "elasticmapreduce:ListClusters",
-            "elasticmapreduce:ListInstanceGroups",
-            "elasticmapreduce:ListInstances",
-            "elasticmapreduce:ListSteps",
-            "kinesis:CreateStream",
-            "kinesis:DeleteStream",
-            "kinesis:DescribeStream",
-            "kinesis:GetRecords",
-            "kinesis:GetShardIterator",
-            "kinesis:MergeShards",
-            "kinesis:PutRecord",
-            "kinesis:SplitShard",
-            "rds:Describe*",
-            "s3:*",
-            "sdb:*",
-            "sns:*",
-            "sqs:*"
-        ]
-    }]
+  tags = var.tags
 }
-EOF
+
+resource "aws_iam_role_policy" "iam_emr_profile_role_policy" {
+  name   = "iam_emr_profile_policy"
+  role   = aws_iam_role.iam_emr_profile_role.id
+  policy = file("${path.module}/iam_emr_profile_role_policy.json")
 }
