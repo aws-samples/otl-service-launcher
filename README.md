@@ -24,7 +24,7 @@ There are three ways to use this module:
     ```shell
     ❯ terraform apply -var 'username=<<your-username>>' \
                       -var 'profile=<<your-aws-cli-profile>>' \
-                      -var 'mysql=true' \
+                      -var 'mysql=true'
     ```
 
 2. As provided Terraform configuration files where you provide the **required** and *optional* variables via a **Terraform `.tfvars` file**
