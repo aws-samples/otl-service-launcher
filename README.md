@@ -1,4 +1,4 @@
-# Outposts Test Lab (OTL) Service Launcher
+# Outposts Test Labs (OTL) Service Launcher
 
 ***This module is intended be used exclusively with the AWS Outposts Test Labs (OTL) racks using OTL test accounts.***
 
