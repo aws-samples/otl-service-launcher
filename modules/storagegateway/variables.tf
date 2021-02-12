@@ -12,10 +12,22 @@ variable "tags" {
   description = "Common tags to apply to all taggable resources."
 }
 
+variable "main_vpc_id" {
+  type = string
+}
+
 # -----------------------------------------------------------------------------
 # Storage Gateway variables
 # -----------------------------------------------------------------------------
-variable "subnet_ids" {
-  type = list(string)
+
+variable "region_prefixlist_mapping" {
+  description = "mapping for finding correct prefix list for amazon corp"
+  default = {
+    "us-east-1" = "pl-60b85b09",
+    "us-west-2" = "pl-f8a64391"
+  }
 }
 
+variable "subnet_id" {
+  type = string
+}
