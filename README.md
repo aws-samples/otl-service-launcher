@@ -2,7 +2,7 @@
 
 ***This module is intended be used exclusively with the AWS Outposts Test Labs (OTL) racks using OTL test accounts.***
 
-AWS customers, partners, and Solutions Architects using the Outposts Test Labs (OTL) to validate applications on AWS Outposts infrastructure need a quick and easy way to provision test environments and deploy supported AWS services. This Terraform module deploys an in-region VPC spaning multiple Autonomous Zones (AZs) and extends the VPC onto the OTL Outpost associated with the deploying user's AWS account. The *main* VPC includes public and private subnets for each AZ and the Outpost. The module can optionally deploy supported AWS services on the Outpost and an additional simulated *on-premises* VPC in the Region. OTL users specify the services to deploy by enabling boolean service deployment *flags*.
+AWS customers, partners, and Solutions Architects using the Outposts Test Labs (OTL) to validate applications on AWS Outposts infrastructure need a quick and easy way to provision test environments and deploy supported AWS services. This Terraform module deploys an in-Region VPC spaning multiple Autonomous Zones (AZs) and extends the VPC onto the OTL Outpost associated with the deploying user's AWS account. The *main* VPC includes public and private subnets for each AZ and the Outpost. The module can optionally deploy supported AWS services on the Outpost and an additional simulated *on-premises* VPC in the Region. OTL users specify the services to deploy by enabling boolean service deployment *flags*.
 
 Deployable Services:
 
@@ -68,7 +68,7 @@ There are three ways to use this module:
     }
     ```
 
-## Input Variables
+## Input variables
 
 ### Required
 
@@ -77,8 +77,40 @@ There are three ways to use this module:
 | **username** | Your username - will be prepended to most resource names and tags to track what's yours in the Outposts Test Labs (OTL) environment. |
 | **profile** | The AWS CLI profile Terraform should use to authenticate with the AWS cloud. Terraform deploys the configured resources into the account associated with this profile. You must use an AWS account associated with an OTL Outpost rack. |
 
-## Deployed Services
+### Optional
 
-### Simulated On-Premises VPC
+| Name | Default | Description |
+| ---- | ------- | ----------- |
+| region | `"us-west-2"` | The parent region of the Outposts Test Lab (OTL) rack. The main VPC will be deployed in this region and the VPC extended to the Outpost. |
+| main_vpc_cidr | `""` | The `/16` VPC CIDR block for the main VPC. By default, the module will *randomly generate* a `/16` block in the `10.0.0.0/8` network. |
+| tags | `{}` | A map of tags to apply to all supported resources created by module. By default, the module tags all resources with `Username`, `CallerARN`, `OutpostName`, and `OutpostARN` tags. The default tags are merged with the tags provided by via this input variable. |
 
-Enabling the `on_prem_vpc` flag will deploy an additional VPC in the AWS Region. The module creates a multi-AZ VPC with two (AZs) configured with public and private subnets and pre-provisions a Virtual Private Gateway (VGW). You can manually connect the VGW to your on-premises networks and configure routing between your on-premises network, the *on-premises*, and the *main* VPC via the Outpost's LGW using the normal OTL-LGW connectivity steps.
+> ***Note:*** Local gateway (LGW) attachment will fail if the the `main_vpc_cidr` overlaps with a VPC already attached to the LGW. With low concurrent usage, the practice of using random `10.x.0.0/16` CIDR blocks (selecting from 256 possible blocks), and tearing down VPCs when not needed, should be sufficient to prevent overlaps without requiring the creation and maintenance of a static addressing plan. **If the module fails to deploy due to a LGW attachment failure, destroy the VPC with `terraform destroy` and try deploying it again (the module will generate a new random CIDR block).** The services deployed via the *service deployment flags* are configured with a dependence on the LGW attachment - this prevents the deployment of the services in the event the LGW attachment fails - saving you time if the VPC needs to be redeployed.
+
+### Service deployment flags
+
+Set these flags to true to deploy the desired services.
+
+| Name | Default | Description |
+| ---- | ------- | ----------- |
+| region_cloud9 | `false` | Deploy a Cloud9 bastion in the main VPC in the Region. |
+| outpost_cloud9 | `false` | Deploy a Cloud9 bastion on the Outpost. |
+| emr | `false` | Deploy an EMR cluster on the Outpost. |
+| memcached | `false` | Deploy an ElastiCache Memcached instance on the Outpost. |
+| redis | `false` | Deploy an ElastiCache Redis instance on the Outpost. |
+| eks | `false` | Deploy an EKS cluster in the main VPC in the Region with a worker node on the Outpost. |
+| mysql | `false` | Deploy an RDS MySQL instance on the Outpost. |
+| postgres | `false` | Deploy an RDS PostgreSQL instance on the Outpost. |
+| on_prem_vpc | `false` | Deploy a VPC to simulate an on-premises network in the region and to enable connectivity to on-premises networks. |
+
+## Deployed services
+
+### Simulated on-premises VPC
+
+*Input variables:*
+
+| Name | Default | Description |
+| ---- | ------- | ----------- |
+| on_prem_vpc_cidr | `""` | A `/19` (minimum) CIDR block for the on-premises VPC. By default, the module will generate a random `/19` CIDR block in the `172.16.0.0/12` range. |
+
+Enabling the `on_prem_vpc` flag will deploy an additional VPC in the AWS Region. The module creates a multi-AZ VPC with two (AZs) configured with public and private subnets and pre-provisions a Virtual Private Gateway (VGW). You can manually connect the VGW to your on-premises networks and configure routing between your on-premises network, the *on-premises VPC*, and the *main VPC* via the Outpost's LGW using the normal OTL-LGW connectivity steps.
