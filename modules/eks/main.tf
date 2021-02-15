@@ -58,17 +58,6 @@ resource "aws_eks_node_group" "outpost_node_group" {
 
 
 # -----------------------------------------------------------------------------
-# CloudWatch control plane logging
-# -----------------------------------------------------------------------------
-resource "aws_cloudwatch_log_group" "eks_cluster" {
-  name              = "/aws/eks/${aws_eks_cluster.eks_cluster.name}/cluster"
-  retention_in_days = 7
-
-  tags = var.tags
-}
-
-
-# -----------------------------------------------------------------------------
 # IAM roles and policies
 # -----------------------------------------------------------------------------
 
