@@ -101,6 +101,24 @@ variable "on_prem_vpc" {
   description = "Set this to true if you want to deploy a VPC to simulate an on-premises network."
 }
 
+variable "file_gateway" {
+  type        = bool
+  default     = false
+  description = "Set this to true if you want to deploy a file gateway."
+}
+
+variable "volume_gateway" {
+  type        = bool
+  default     = false
+  description = "Set this to true if you want to deploy a volume gateway."
+}
+
+variable "tape_gateway" {
+  type        = bool
+  default     = false
+  description = "Set this to true if you want to deploy a tape gateway."
+}
+
 
 # -----------------------------------------------------------------------------
 # Outposts Test Labs (OTL) variables

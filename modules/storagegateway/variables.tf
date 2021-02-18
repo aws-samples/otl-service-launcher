@@ -12,10 +12,6 @@ variable "tags" {
   description = "Common tags to apply to all taggable resources."
 }
 
-variable "main_vpc_id" {
-  type = string
-}
-
 # -----------------------------------------------------------------------------
 # Storage Gateway variables
 # -----------------------------------------------------------------------------
@@ -28,6 +24,18 @@ variable "region_prefixlist_mapping" {
   }
 }
 
+variable "main_vpc_id" {
+  type = string
+}
+
 variable "subnet_id" {
+  type = string
+}
+
+variable "op_id" {
+  type = string
+}
+
+variable "region" {
   type = string
 }

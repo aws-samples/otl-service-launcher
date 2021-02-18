@@ -3,6 +3,10 @@
 # -----------------------------------------------------------------------------
 # Creates EC2 instance that will host the gateway and required resources
 
+data "aws_outposts_outpost" "op" {
+  id = var.op_id
+}
+
 # create RDS key for AWS key pair
 resource "tls_private_key" "sgw_tls" {
   algorithm = "RSA"
@@ -11,7 +15,7 @@ resource "tls_private_key" "sgw_tls" {
 
 # create AWS key pair
 resource "aws_key_pair" "storagegateway" {
-  key_name = join("-",[var.name, "storage-gateway-key"])
+  key_name = join("-",[var.username, "storage-gateway-key"])
   public_key = tls_private_key.sgw_tls.public_key_openssh
 }
 
@@ -43,26 +47,26 @@ resource "aws_instance" "storage_gateway_server" {
             volume_type = "gp2"
   }
   tags = {
-    Name = join("-",[var.name, "storage-gateway"])
+    Name = join("-",[var.username, "storage-gateway"])
   }
 }
 
 # this security group will allow all traffic from amazon corpnet 
 resource "aws_security_group" "storage_gateway_sg" {
-name = join("-",[var.name, "storage-gateway-activation-sg"])
-vpc_id = var.main_vpc_id
-ingress {
-prefix_list_ids = [lookup(var.region_prefixlist_mapping, var.region)]
-protocol = "-1"
-from_port = 0
-to_port = 0
-}
-egress {
-protocol = "-1"
-from_port = 0
-to_port = 0
-cidr_blocks = ["0.0.0.0/0"]
-}
+  name = join("-",[var.username, "storage-gateway-activation-sg"])
+  vpc_id = var.main_vpc_id
+  ingress {
+    prefix_list_ids = [lookup(var.region_prefixlist_mapping, var.region)]
+    protocol = "-1"
+    from_port = 0
+    to_port = 0
+  }
+  egress {
+    protocol = "-1"
+    from_port = 0
+    to_port = 0
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 resource "aws_ebs_volume" "storage_gateway_server_cache_disk" {
@@ -123,7 +127,7 @@ resource "aws_storagegateway_upload_buffer" "buffer" {
 resource "aws_storagegateway_cached_iscsi_volume" "example" {
   gateway_arn          = aws_storagegateway_cache.storage_gateway_cache.gateway_arn
   network_interface_id = aws_instance.storage_gateway_server.private_ip
-  target_name          = join("-",[var.name, "target-volume"])
+  target_name          = join("-",[var.username, "target-volume"])
   volume_size_in_bytes = 5368709120 # 5 GB
 }
 
@@ -191,10 +195,10 @@ resource "aws_iam_policy_attachment" "transfer_attach" {
 }
 
 resource "aws_s3_bucket" "backup_test_bucket" {
-  bucket = join("-",[var.name, "backup-test-bucket"])
+  bucket = join("-",[var.username, "backup-test-bucket"])
   acl    = "private"
   tags = {
-    Name        = join("-",[var.name, "backup-test-bucket"])
+    Name        = join("-",[var.username, "backup-test-bucket"])
     Environment = "Dev"
   }
 }

@@ -180,3 +180,54 @@ module "on_prem_vpc" {
   # Ensure the local gateway attachment succeeds before configuring the on-premises VPC
   depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
 }
+
+# -----------------------------------------------------------------------------
+# Storage Gateway
+# -----------------------------------------------------------------------------
+module "file_gateway" {
+  source = "./modules/storagegateway"
+  count  = var.file_gateway ? 1 : 0
+
+  username = var.username
+  tags     = local.tags
+
+  main_vpc_id = aws_vpc.main_vpc.id
+  subnet_id = aws_subnet.outpost_public.id
+  op_id = data.aws_outposts_outpost.selected.id
+  region = var.region
+
+  # Ensure the local gateway attachment succeeds before deploying instances
+  depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
+}
+
+module "volume_gateway" {
+  source = "./modules/storagegateway"
+  count  = var.volume_gateway ? 1 : 0
+
+  username = var.username
+  tags     = local.tags
+
+  main_vpc_id = aws_vpc.main_vpc.id
+  subnet_id = aws_subnet.outpost_public.id
+  op_id = data.aws_outposts_outpost.selected.id
+  region = var.region
+
+  # Ensure the local gateway attachment succeeds before deploying instances
+  depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
+}
+
+module "tape_gateway" {
+  source = "./modules/storagegateway"
+  count  = var.tape_gateway ? 1 : 0
+
+  username = var.username
+  tags     = local.tags  
+
+  main_vpc_id = aws_vpc.main_vpc.id
+  subnet_id = aws_subnet.outpost_public.id
+  op_id = data.aws_outposts_outpost.selected.id
+  region = var.region
+
+  # Ensure the local gateway attachment succeeds before deploying instances
+  depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
+}
