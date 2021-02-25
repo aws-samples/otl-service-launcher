@@ -12,9 +12,14 @@ variable "profile" {
   default     = "default"
 }
 
+
+# -----------------------------------------------------------------------------
+# Optional configuration variables
+# -----------------------------------------------------------------------------
+
 variable "region" {
   type        = string
-  description = "The region to which the Outposts Test Lab (OTL) rack is attached."
+  description = "The parent region of the Outposts Test Lab (OTL) rack. The main VPC will be deployed in this region and the VPC extended to the Outpost."
   default     = "us-west-2"
 }
 
@@ -50,55 +55,65 @@ locals {
 variable "region_cloud9" {
   type        = bool
   default     = false
-  description = "Set this to true if you want to deploy a Cloud9 bastion in the Region."
+  description = "Deploy a Cloud9 bastion in the main VPC in the Region."
 }
 
 variable "outpost_cloud9" {
   type        = bool
   default     = false
-  description = "Set this to true if you want to deploy a Cloud9 bastion in the Outpost"
-}
-
-variable "eks" {
-  type        = bool
-  default     = false
-  description = "Set this to true if you want to deploy an EKS cluster."
+  description = "Deploy a Cloud9 bastion in on the Outpost."
 }
 
 variable "emr" {
   type        = bool
   default     = false
-  description = "Set this to true if you want to deploy an EMR cluster."
+  description = "Deploy an EMR cluster on the Outpost."
 }
 
 variable "memcached" {
   type        = bool
   default     = false
-  description = "Set this to true if you want to deploy an ElastiCache Memcached instance."
+  description = "Deploy an ElastiCache Memcached instance on the Outpost."
 }
 
 variable "redis" {
   type        = bool
   default     = false
-  description = "Set this to true if you want to deploy an ElastiCache Redis instance."
+  description = "Deploy an ElastiCache Redis instance on the Outpost."
+}
+
+variable "eks" {
+  type        = bool
+  default     = false
+  description = "Deploy an EKS cluster in the main VPC in the Region with a worker node on the Outpost."
 }
 
 variable "mysql" {
   type        = bool
   default     = false
-  description = "Set this to true if you want to deploy an RDS MySQL instance."
+  description = "Deploy an RDS MySQL instance on the Outpost."
 }
 
 variable "postgres" {
   type        = bool
   default     = false
-  description = "Set this to true if you want to deploy an RDS PostgreSQL instance."
+  description = "Deploy an RDS PostgreSQL instance on the Outpost."
 }
 
 variable "on_prem_vpc" {
   type        = bool
   default     = false
-  description = "Set this to true if you want to deploy a VPC to simulate an on-premises network."
+  description = "Deploy a VPC to simulate an on-premises network in the region and to enable connectivity to on-premises networks."
+}
+
+
+# -----------------------------------------------------------------------------
+# Simulated on-premises network variables
+# -----------------------------------------------------------------------------
+variable "on_prem_vpc_cidr" {
+  type        = string
+  description = "A /19 (minimum) CIDR block for the simulated on-premises VPC. By default, the module will generate a random CIDR block in the 172.16.0.0/12 range."
+  default     = ""
 }
 
 variable "file_gateway" {
@@ -138,14 +153,4 @@ variable "otl_outpost_ids" {
     "op-09d4c743ed7a5780b",
     "op-0cc27b83880c7d8e9"
   ]
-}
-
-
-# -----------------------------------------------------------------------------
-# Simulated on-premises network variables
-# -----------------------------------------------------------------------------
-variable "on_prem_vpc_cidr" {
-  type        = string
-  description = "A /19 (minimum) CIDR block for the simulated on-premises VPC. By default, the module will generate a random CIDR block in the 172.16.0.0/12 range."
-  default     = ""
 }
