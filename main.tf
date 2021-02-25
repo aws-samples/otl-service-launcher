@@ -196,6 +196,10 @@ module "file_gateway" {
   op_id = data.aws_outposts_outpost.selected.id
   region = var.region
 
+  gateway_name       = "file-gateway"
+  gateway_type       = "FILE_S3"
+  instance_type      = "r5.xlarge"
+
   # Ensure the local gateway attachment succeeds before deploying instances
   depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
 }
@@ -212,6 +216,10 @@ module "volume_gateway" {
   op_id = data.aws_outposts_outpost.selected.id
   region = var.region
 
+  gateway_name       = "volume-gateway"
+  gateway_type       = "CACHED"
+  instance_type      = "r5.xlarge"
+
   # Ensure the local gateway attachment succeeds before deploying instances
   depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
 }
@@ -227,6 +235,10 @@ module "tape_gateway" {
   subnet_id = aws_subnet.outpost_public.id
   op_id = data.aws_outposts_outpost.selected.id
   region = var.region
+
+  gateway_name       = "tape-gateway"
+  gateway_type       = "VTL"
+  instance_type      = "r5.xlarge"
 
   # Ensure the local gateway attachment succeeds before deploying instances
   depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]

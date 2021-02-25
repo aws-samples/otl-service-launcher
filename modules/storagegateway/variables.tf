@@ -39,3 +39,15 @@ variable "op_id" {
 variable "region" {
   type = string
 }
+
+variable "gateway_name" {
+  type = string
+}
+
+variable "gateway_type" {
+  type = string
+}
+
+variable "instance_type" {
+  type = string
+}

@@ -21,7 +21,6 @@ resource "aws_key_pair" "storagegateway" {
 
 # get the most recent storage gateway AMI
 data "aws_ami" "sg_ami" {
-  executable_users = ["self"]
   most_recent      = true
   owners           = ["amazon"]
   filter {
@@ -37,7 +36,7 @@ data "aws_ami" "sg_ami" {
 # create the instance
 resource "aws_instance" "storage_gateway_server" {
   ami = data.aws_ami.sg_ami.image_id
-  instance_type = "m5.xlarge"
+  instance_type = var.instance_type
   associate_public_ip_address = true
   key_name = aws_key_pair.storagegateway.key_name
   subnet_id = var.subnet_id
@@ -99,9 +98,9 @@ resource "aws_volume_attachment" "storage_gateway_attach_buffer" {
 
 resource "aws_storagegateway_gateway" "storage_gateway" {
   gateway_ip_address = aws_instance.storage_gateway_server.public_ip
-  gateway_name       = "storage-gateway"
+  gateway_name       = var.gateway_name
   gateway_timezone   = "GMT"
-  gateway_type       = "CACHED"
+  gateway_type       = var.gateway_type
 }
 
 data "aws_storagegateway_local_disk" "storage_gateway_data" {
@@ -125,6 +124,7 @@ resource "aws_storagegateway_upload_buffer" "buffer" {
 }
 
 resource "aws_storagegateway_cached_iscsi_volume" "example" {
+  count = var.gateway_type == "CACHED" ? 1 : 0
   gateway_arn          = aws_storagegateway_cache.storage_gateway_cache.gateway_arn
   network_interface_id = aws_instance.storage_gateway_server.private_ip
   target_name          = join("-",[var.username, "target-volume"])
@@ -132,7 +132,7 @@ resource "aws_storagegateway_cached_iscsi_volume" "example" {
 }
 
 resource "aws_iam_role" "transfer_role" { 
-  name = "transfer-role" 
+  name = join("-",[var.username, var.gateway_name, "role"])
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -151,7 +151,7 @@ EOF
 }
 
 resource "aws_iam_policy" "transfer_policy_sg" {
-  name = "transfer-policy-sg" 
+  name = join("-",[var.username, var.gateway_name, "policy"])
   description = "Allows access to storage gateway"
   policy = <<EOF
 {
@@ -189,16 +189,15 @@ EOF
 }
 
 resource "aws_iam_policy_attachment" "transfer_attach" {
-  name = "storagegateway-attachment"
+  name = join("-",[var.username, var.gateway_name, "attach"])
   roles = [aws_iam_role.transfer_role.name]
   policy_arn = aws_iam_policy.transfer_policy_sg.arn
 }
 
 resource "aws_s3_bucket" "backup_test_bucket" {
-  bucket = join("-",[var.username, "backup-test-bucket"])
   acl    = "private"
   tags = {
-    Name        = join("-",[var.username, "backup-test-bucket"])
+    Name = join("-",[var.username, var.gateway_name, "bucket"])
     Environment = "Dev"
   }
 }
