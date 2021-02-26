@@ -12,11 +12,11 @@ resource "aws_emr_cluster" "outpost_cluster" {
   }
 
   master_instance_group {
-    instance_type = var.master_instance_type
+    instance_type = local.master_instance_type
   }
 
   core_instance_group {
-    instance_type  = var.core_instance_type
+    instance_type  = local.core_instance_type
     instance_count = var.core_instance_count
   }
 

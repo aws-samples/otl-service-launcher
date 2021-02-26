@@ -29,6 +29,18 @@ variable "main_vpc_cidr" {
   default     = ""
 }
 
+variable "allowed_instance_types" {
+  # so that this script doesn't eat your large instance capacity by default
+  type = set(string)
+  default = [
+    "r5.xlarge",
+    "m5.xlarge",
+    "c5.xlarge",
+    "r5.large",
+    "m5.large",
+    "c5.large"
+  ]
+}
 
 # -----------------------------------------------------------------------------
 # Common Tags
@@ -44,7 +56,7 @@ locals {
     Username    = var.username
     CallerARN   = data.aws_caller_identity.current.arn
     OutpostName = data.aws_outposts_outpost.selected.name
-    OurpostARN  = data.aws_outposts_outpost.selected.arn
+    OutpostARN  = data.aws_outposts_outpost.selected.arn
   })
 }
 
