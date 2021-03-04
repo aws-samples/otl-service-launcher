@@ -61,16 +61,6 @@ resource "aws_security_group_rule" "emr_master_self" {
   self        = true
 }
 
-resource "aws_security_group_rule" "emr_master_core" {
-  security_group_id = aws_security_group.emr_master.id
-  type              = "ingress"
-
-  description              = "Allow all traffic from the EMR Master security group"
-  protocol                 = "-1"
-  from_port                = 0
-  to_port                  = 0
-  source_security_group_id = aws_security_group.emr_master.id
-}
 resource "aws_security_group_rule" "emr_master_service_access" {
   security_group_id = aws_security_group.emr_master.id
   type              = "ingress"
