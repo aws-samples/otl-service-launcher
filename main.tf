@@ -116,7 +116,6 @@ module "emr_cluster" {
   release_label        = "emr-5.32.0"
 
   # these will be cross-checked against supported EMR instances
-  # an arbitrary instance type supported by the 
   master_instance_types = local.allowed_outpost_instance_types
   core_instance_types   = local.allowed_outpost_instance_types
   core_instance_count  = 1

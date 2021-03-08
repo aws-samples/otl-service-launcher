@@ -32,9 +32,18 @@ resource "aws_emr_cluster" "outpost_cluster" {
 
   configurations_json = file("${path.module}/emr_cluster_configurations.json")
 
+  log_uri = "s3://${aws_s3_bucket.log_bucket.id}"
+
   service_role = data.aws_iam_role.iam_emr_service_role.arn
 }
 
+# -----------------------------------------------------------------------------
+# S3 bucket for logging
+# -----------------------------------------------------------------------------
+
+resource "aws_s3_bucket" "log_bucket" {
+  bucket_prefix = "${var.username}-emr-logs"
+}
 
 # -----------------------------------------------------------------------------
 # Security groups
