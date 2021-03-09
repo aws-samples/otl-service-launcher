@@ -1,8 +1,8 @@
 # Outposts Test Labs (OTL) Service Launcher
 
-***This module is intended be used with the AWS Outposts Test Labs (OTL) racks using OTL test accounts.***
+***This module is intended be used with the AWS Outposts Test Labs (OTL) racks using OTL test accounts. If you want to use it with your own Outpost and/or contribute code, see the instructions at the bottom of this readme.***
 
-AWS customers, partners, and Solutions Architects using the Outposts Test Labs (OTL) to validate applications on AWS Outposts infrastructure need a quick and easy way to provision test environments and deploy supported AWS services. This Terraform module deploys an in-Region VPC spanning multiple Autonomous Zones (AZs) and extends the VPC onto the OTL Outpost associated with the deploying user's AWS account. The *main* VPC includes public and private subnets for each AZ and the Outpost. The module can optionally deploy supported AWS services on the Outpost and an additional simulated *on-premises* VPC in the Region. OTL users specify the services to deploy by enabling boolean service deployment *flags*.
+AWS customers, partners, and Solutions Architects using the Outposts Test Labs (OTL) to validate applications on AWS Outposts infrastructure need a quick and easy way to provision test environments and deploy supported AWS services. This Terraform module deploys an in-Region VPC spanning multiple Availability Zones (AZs) and extends the VPC onto the OTL Outpost associated with the deploying user's AWS account. The *main* VPC includes public and private subnets for each AZ and the Outpost. The module can optionally deploy supported AWS services on the Outpost and an additional simulated *on-premises* VPC in the Region. OTL users specify the services to deploy by enabling boolean service deployment *flags*.
 
 Deployable Services:
 
@@ -118,3 +118,34 @@ Set these flags to true to deploy the desired services.
 | on_prem_vpc_cidr | `""` | A `/19` (minimum) CIDR block for the on-premises VPC. By default, the module will generate a random `/19` CIDR block in the `172.16.0.0/12` range. |
 
 Enabling the `on_prem_vpc` flag will deploy an additional VPC in the AWS Region. The module creates a multi-AZ VPC with two (AZs) configured with public and private subnets and pre-provisions a Virtual Private Gateway (VGW). You can work with the OTL team to manually connect the VGW to your on-premises networks and configure routing between your on-premises network, the *on-premises VPC*, and the *main VPC* via the Outpost's LGW using the normal OTL-LGW connectivity steps.
+
+### Using this repo outside of OTL
+
+We, the maintainers, don't test this repo on Outposts outside of OTL. We also add features (such as `on_prem_vpc`) that loosely integrate with OTL-specific architecture. If you're using this repo on your own non-OTL Outpost, your mileage may vary.
+
+That being said, this repo "should" "just work" if you set the `otl_outpost_ids` variable to a list containing your own Outpost IDs. For example:
+
+```shell
+    ❯ cat otl.auto.tfvars
+    username = "<<your-username>>"
+    profile  = "<<your-aws-cli-profile>>"
+
+    region_cloud9           = false
+    outpost_cloud9          = false
+    emr                     = false 
+    memcached               = false
+    redis                   = false
+    eks                     = false
+    eks_outpost_node_group  = false
+    mysql                   = false
+    postgres                = false
+    on_prem_vpc             = false
+
+    otl_outpost_ids         = ["<<your-outpost-id>>"]
+
+    ❯ terraform apply
+    ```
+
+### Contributing
+
+If you find a problem, cut us an issue. If you solve a problem and/or add new functionality that you'd like to share, submit a PR! We welcome your contributions.
