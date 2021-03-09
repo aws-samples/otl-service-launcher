@@ -126,25 +126,25 @@ We, the maintainers, don't test this repo on Outposts outside of OTL. We also ad
 That being said, this repo "should" "just work" if you set the `otl_outpost_ids` variable to a list containing your own Outpost IDs. For example:
 
 ```shell
-    ❯ cat otl.auto.tfvars
-    username = "<<your-username>>"
-    profile  = "<<your-aws-cli-profile>>"
+❯ cat otl.auto.tfvars
+username = "<<your-username>>"
+profile  = "<<your-aws-cli-profile>>"
 
-    region_cloud9           = false
-    outpost_cloud9          = false
-    emr                     = false 
-    memcached               = false
-    redis                   = false
-    eks                     = false
-    eks_outpost_node_group  = false
-    mysql                   = false
-    postgres                = false
-    on_prem_vpc             = false
+region_cloud9           = false
+outpost_cloud9          = false
+emr                     = false 
+memcached               = false
+redis                   = false
+eks                     = false
+eks_outpost_node_group  = false
+mysql                   = false
+postgres                = false
+on_prem_vpc             = false
 
-    otl_outpost_ids         = ["<<your-outpost-id>>"]
+otl_outpost_ids         = ["<<your-outpost-id>>"]
 
-    ❯ terraform apply
-    ```
+❯ terraform apply
+```
 
 ### Contributing
 
