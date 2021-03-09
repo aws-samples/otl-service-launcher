@@ -43,6 +43,9 @@ resource "aws_emr_cluster" "outpost_cluster" {
 
 resource "aws_s3_bucket" "log_bucket" {
   bucket_prefix = "${var.username}-emr-logs"
+
+  # allows the stack to destroy cleanly but will delete your EMR log files in doing so
+  force_destroy = true
 }
 
 # -----------------------------------------------------------------------------
