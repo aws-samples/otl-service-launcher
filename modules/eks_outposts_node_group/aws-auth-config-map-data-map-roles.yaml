@@ -1,0 +1,5 @@
+- rolearn: ${eks_outposts_node_group_iam_role}
+  username: system:node:{{EC2PrivateDNSName}}
+  groups:
+    - system:bootstrappers
+    - system:nodes

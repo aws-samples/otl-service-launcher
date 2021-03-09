@@ -29,6 +29,22 @@ variable "main_vpc_cidr" {
   default     = ""
 }
 
+variable "allowed_instance_types" {
+  description = "Set this list to the instance size(s), in priority order, that you would like to use as the default size for instances created by the OTL service launcher."
+  # so that this script doesn't eat your large instance capacity by default
+  type = list(string)
+  default = [
+    "c5.large",
+    "m5.large",
+    "r5.large",
+    "c5.xlarge",
+    "m5.xlarge",
+    "r5.xlarge",
+    "c5.2xlarge",
+    "m5.2xlarge",
+    "r5.2xlarge",
+  ]
+}
 
 # -----------------------------------------------------------------------------
 # Common Tags
@@ -44,7 +60,7 @@ locals {
     Username    = var.username
     CallerARN   = data.aws_caller_identity.current.arn
     OutpostName = data.aws_outposts_outpost.selected.name
-    OurpostARN  = data.aws_outposts_outpost.selected.arn
+    OutpostARN  = data.aws_outposts_outpost.selected.arn
   })
 }
 
@@ -86,6 +102,18 @@ variable "eks" {
   type        = bool
   default     = false
   description = "Deploy an EKS cluster in the main VPC in the Region with a worker node on the Outpost."
+}
+
+variable "eks_cluster" {
+  type        = bool
+  default     = true
+  description = "Deploy an EKS cluster in the main VPC."
+}
+
+variable "eks_outpost_node_group" {
+  type        = bool
+  default     = true
+  description = "Deploy a self-managed EKS node group on the Outpost."
 }
 
 variable "mysql" {

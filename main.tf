@@ -10,7 +10,7 @@ module "region_cloud9_bastion" {
 
   location      = "region"
   subnet_id     = aws_subnet.region_az_1_public.id
-  instance_type = "m5.xlarge"
+  instance_type = "m5.2xlarge"
 
   automatic_stop_time_minutes = 240
   # Ensure the local gateway attachment succeeds before deploying instances
@@ -26,7 +26,7 @@ module "outpost_cloud9_bastion" {
 
   location      = "outpost"
   subnet_id     = aws_subnet.outpost_public.id
-  instance_type = "m5.xlarge"
+  instance_type = coalesce(local.allowed_outpost_instance_types...)
 
   automatic_stop_time_minutes = 240
   # Ensure the local gateway attachment succeeds before deploying instances
@@ -38,23 +38,39 @@ module "outpost_cloud9_bastion" {
 # EKS cluster
 # -----------------------------------------------------------------------------
 module "eks_cluster" {
-  source = "./modules/eks"
-  count  = var.eks ? 1 : 0
+  source = "./modules/eks_cluster"
+  count  = (var.eks && var.eks_cluster) ? 1 : 0
 
-  username = var.username
-  tags     = local.tags
+  tags = local.tags
 
-  region_public_subnet_ids = [
-    aws_subnet.region_az_1_public.id,
-    aws_subnet.region_az_2_public.id,
-  ]
-  outpost_private_subnet_ids = [aws_subnet.outpost_private.id]
+  cluster_name = local.eks_cluster_name
 
   kubernetes_version = "1.18"
   service_ipv4_cidr  = "192.168.0.0/16"
 
-  instance_types = ["m5.xlarge"]
-  node_count     = 1
+  cluster_subnet_ids = [
+    aws_subnet.region_az_1_private.id,
+    aws_subnet.region_az_2_private.id,
+  ]
+
+  # Ensure the local gateway attachment succeeds before deploying instances
+  depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
+}
+
+module "eks_outposts_node_group" {
+  source = "./modules/eks_outposts_node_group"
+  count  = (var.eks && var.eks_outpost_node_group) ? 1 : 0
+
+  tags = local.tags
+
+  cluster_name       = local.eks_cluster_name
+  kubernetes_version = "1.18"
+  outpost_subnet_id  = aws_subnet.outpost_private.id
+  instance_type      = coalesce(local.allowed_outpost_instance_types...)
+  security_group     = concat(module.eks_cluster[*].cluster_security_group_id, [""])[0]
+
+  # Ensure the local gateway attachment succeeds before deploying instances
+  depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
 }
 
 # -----------------------------------------------------------------------------
@@ -72,7 +88,7 @@ module "elasticache_memcached_instance" {
   engine               = "memcached"
   engine_version       = "1.6.6"
   parameter_group_name = "default.memcached1.6"
-  node_type            = "cache.r5.xlarge"
+  node_type            = "cache.${coalesce(local.allowed_outpost_instance_types...)}"
   num_cache_nodes      = 1
 
   # Ensure the local gateway attachment succeeds before deploying instances
@@ -91,7 +107,7 @@ module "elasticache_redis_instance" {
   engine               = "redis"
   engine_version       = "5.0.6"
   parameter_group_name = "default.redis5.0"
-  node_type            = "cache.r5.xlarge"
+  node_type            = "cache.${coalesce(local.allowed_outpost_instance_types...)}"
   num_cache_nodes      = 1
 
   # Ensure the local gateway attachment succeeds before deploying instances
@@ -113,10 +129,13 @@ module "emr_cluster" {
 
   subnet_id = aws_subnet.outpost_private.id
 
-  release_label        = "emr-5.32.0"
-  master_instance_type = "m5.xlarge"
-  core_instance_type   = "m5.xlarge"
-  core_instance_count  = 1
+  release_label = "emr-5.32.0"
+
+  # these will be cross-checked against supported EMR instances
+  # an arbitrary instance type supported by the 
+  master_instance_types = local.allowed_outpost_instance_types
+  core_instance_types   = local.allowed_outpost_instance_types
+  core_instance_count   = 1
 
   # Ensure the local gateway attachment succeeds before deploying clusters
   depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
@@ -138,7 +157,7 @@ module "rds_mysql_instance" {
   engine               = "mysql"
   engine_version       = "8.0.17"
   parameter_group_name = "default.mysql8.0"
-  instance_class       = "db.r5.xlarge"
+  instance_class       = "db.${coalesce(local.allowed_outpost_instance_types...)}"
   allocated_storage    = 20
 
   # Ensure the local gateway attachment succeeds before deploying instances
@@ -157,7 +176,7 @@ module "rds_postgres_instance" {
   engine               = "postgres"
   engine_version       = "12.2"
   parameter_group_name = "default.postgres12"
-  instance_class       = "db.r5.xlarge"
+  instance_class       = "db.${coalesce(local.allowed_outpost_instance_types...)}"
   allocated_storage    = 20
 
   # Ensure the local gateway attachment succeeds before deploying instances
