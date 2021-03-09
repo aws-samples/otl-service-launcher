@@ -10,7 +10,7 @@ module "region_cloud9_bastion" {
 
   location      = "region"
   subnet_id     = aws_subnet.region_az_1_public.id
-  instance_type = "m5.xlarge"
+  instance_type = "m5.2xlarge"
 
   automatic_stop_time_minutes = 240
   # Ensure the local gateway attachment succeeds before deploying instances
@@ -38,23 +38,39 @@ module "outpost_cloud9_bastion" {
 # EKS cluster
 # -----------------------------------------------------------------------------
 module "eks_cluster" {
-  source = "./modules/eks"
-  count  = var.eks ? 1 : 0
+  source = "./modules/eks_cluster"
+  count  = (var.eks && var.eks_cluster) ? 1 : 0
 
-  username = var.username
-  tags     = local.tags
+  tags = local.tags
 
-  region_public_subnet_ids = [
-    aws_subnet.region_az_1_public.id,
-    aws_subnet.region_az_2_public.id,
-  ]
-  outpost_private_subnet_ids = [aws_subnet.outpost_private.id]
+  cluster_name = local.eks_cluster_name
 
   kubernetes_version = "1.18"
   service_ipv4_cidr  = "192.168.0.0/16"
 
-  instance_types = [coalesce(local.allowed_outpost_instance_types...)]
-  node_count     = 1
+  cluster_subnet_ids = [
+    aws_subnet.region_az_1_private.id,
+    aws_subnet.region_az_2_private.id,
+  ]
+
+  # Ensure the local gateway attachment succeeds before deploying instances
+  depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
+}
+
+module "eks_outposts_node_group" {
+  source = "./modules/eks_outposts_node_group"
+  count  = (var.eks && var.eks_outpost_node_group) ? 1 : 0
+
+  tags = local.tags
+
+  cluster_name       = local.eks_cluster_name
+  kubernetes_version = "1.18"
+  outpost_subnet_id  = aws_subnet.outpost_private.id
+  instance_type      = coalesce(local.allowed_outpost_instance_types...)
+  security_group     = concat(module.eks_cluster[*].cluster_security_group_id, [""])[0]
+
+  # Ensure the local gateway attachment succeeds before deploying instances
+  depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
 }
 
 # -----------------------------------------------------------------------------
@@ -113,12 +129,12 @@ module "emr_cluster" {
 
   subnet_id = aws_subnet.outpost_private.id
 
-  release_label        = "emr-5.32.0"
+  release_label = "emr-5.32.0"
 
   # these will be cross-checked against supported EMR instances
   master_instance_types = local.allowed_outpost_instance_types
   core_instance_types   = local.allowed_outpost_instance_types
-  core_instance_count  = 1
+  core_instance_count   = 1
 
   # Ensure the local gateway attachment succeeds before deploying clusters
   depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]

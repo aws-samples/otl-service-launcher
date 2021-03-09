@@ -17,8 +17,9 @@ data "aws_ec2_local_gateway_route_table" "lgw_rtb" {
   outpost_arn = data.aws_outposts_outpost.selected.arn
 }
 
+data "aws_ec2_coip_pool" "outpost_coip_pool" {
+  local_gateway_route_table_id = data.aws_ec2_local_gateway_route_table.lgw_rtb.id
+}
 data "aws_outposts_outpost_instance_types" "slots" {
   arn = data.aws_outposts_outpost.selected.arn
 }
-
-data "aws_ec2_coip_pool" "outpost_coip_pool" {}
