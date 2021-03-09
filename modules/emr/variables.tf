@@ -42,7 +42,7 @@ variable "core_instance_count" {
 
 locals {
   master_instance_type = coalesce(setintersection(var.master_instance_types, var.supported_instance_types)...)
-  core_instance_type = coalesce(setintersection(var.core_instance_types, var.supported_instance_types)...)
+  core_instance_type   = coalesce(setintersection(var.core_instance_types, var.supported_instance_types)...)
 }
 
 variable "supported_instance_types" {

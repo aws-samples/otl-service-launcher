@@ -32,8 +32,8 @@ output "eks_cluster_endpoint" {
   value = concat(module.eks_cluster[*].cluster_endpoint, [""])[0]
 }
 
-output "eks_kubeconfig_certificate_authority_data" {
-  value     = concat(module.eks_cluster[*].kubeconfig_certificate_authority_data, [""])[0]
+output "eks_cluster_ca_cert" {
+  value     = concat(module.eks_cluster[*].cluster_ca_cert, [""])[0]
   sensitive = true
 }
 
