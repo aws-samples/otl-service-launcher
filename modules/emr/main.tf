@@ -85,7 +85,6 @@ resource "aws_security_group_rule" "emr_master_outbound" {
 
 
 # EMR Core security group
-# Configure the security group rules as separate resources to breck the circular references
 resource "aws_security_group" "emr_core" {
   name        = "${var.username}-emr-core-sg"
   description = "Amazon EMR-Managed Security Group for Core and Task Instances (Private Subnets)"
@@ -133,28 +132,38 @@ resource "aws_security_group" "emr_service_access" {
   description = "Allow all traffic from the main and on-premises VPCs."
   vpc_id      = var.main_vpc_id
 
-  ingress {
-    description     = "Allow HTTPS traffic on port 9443 from the EMR Master security group"
-    protocol        = "tcp"
-    from_port       = 9443
-    to_port         = 9443
-    security_groups = [aws_security_group.emr_master.id]
-  }
-
-  egress {
-    description = "Allow HTTPS traffic on port 8443 to the EMR Master and Core security groups"
-    protocol    = "tcp"
-    from_port   = 8443
-    to_port     = 8443
-    security_groups = [
-      aws_security_group.emr_master.id,
-      aws_security_group.emr_core.id,
-    ]
-  }
-
   tags = var.tags
 }
 
+resource "aws_security_group_rule" "emr_service_access_9443" {
+  security_group_id = aws_security_group.emr_service_access.id
+  type              = "ingress"
+  description              = "Allow HTTPS traffic on port 9443 from the EMR Master security group"
+  protocol                 = "tcp"
+  from_port                = 9443
+  to_port                  = 9443
+  source_security_group_id = aws_security_group.emr_master.id
+}
+
+resource "aws_security_group_rule" "emr_service_access_master_8443" {
+  security_group_id = aws_security_group.emr_service_access.id
+  type              = "egress"
+  description              = "Allow HTTPS traffic on port 8443 to the EMR Master security group"
+  protocol                 = "tcp"
+  from_port                = 8443
+  to_port                  = 8443
+  source_security_group_id = aws_security_group.emr_master.id
+}
+
+resource "aws_security_group_rule" "emr_service_access_core_8443" {
+  security_group_id = aws_security_group.emr_service_access.id
+  type              = "egress"
+  description              = "Allow HTTPS traffic on port 8443 to the EMR Core security group"
+  protocol                 = "tcp"
+  from_port                = 8443
+  to_port                  = 8443
+  source_security_group_id = aws_security_group.emr_core.id
+}
 
 # -----------------------------------------------------------------------------
 # IAM roles and policies

@@ -138,7 +138,10 @@ module "emr_cluster" {
   core_instance_count   = 1
 
   # Ensure the local gateway attachment succeeds before deploying clusters
-  depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
+  depends_on = [
+    aws_ec2_local_gateway_route_table_vpc_association.lgw_association,
+    aws_route.outpost_nat_gw_route
+  ]
 }
 
 
