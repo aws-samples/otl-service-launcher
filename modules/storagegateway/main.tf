@@ -68,6 +68,8 @@ resource "aws_security_group" "storage_gateway_sg" {
   }
 }
 
+### create two EBS volumes and attach them to the storage gateway
+
 resource "aws_ebs_volume" "storage_gateway_server_cache_disk" {
     availability_zone = data.aws_outposts_outpost.op.availability_zone
     outpost_arn = data.aws_outposts_outpost.op.arn
@@ -96,6 +98,7 @@ resource "aws_volume_attachment" "storage_gateway_attach_buffer" {
   instance_id = aws_instance.storage_gateway_server.id
 }
 
+### create the storage gateway
 resource "aws_storagegateway_gateway" "storage_gateway" {
   gateway_ip_address = aws_instance.storage_gateway_server.public_ip
   gateway_name       = var.gateway_name
@@ -121,6 +124,8 @@ data "aws_storagegateway_local_disk" "storage_gateway_buffer" {
 resource "aws_storagegateway_upload_buffer" "buffer" {
   disk_id = data.aws_storagegateway_local_disk.storage_gateway_buffer.id
   gateway_arn = aws_storagegateway_gateway.storage_gateway.arn
+
+  depends_on = [aws_volume_attachment.storage_gateway_attach_buffer]
 }
 
 resource "aws_storagegateway_cached_iscsi_volume" "example" {

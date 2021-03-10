@@ -217,7 +217,7 @@ module "file_gateway" {
 
   gateway_name       = "file-gateway"
   gateway_type       = "FILE_S3"
-  instance_type      = "r5.xlarge"
+  instance_type      = coalesce(local.allowed_outpost_instance_types...)
 
   # Ensure the local gateway attachment succeeds before deploying instances
   depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
@@ -237,7 +237,7 @@ module "volume_gateway" {
 
   gateway_name       = "volume-gateway"
   gateway_type       = "CACHED"
-  instance_type      = "r5.xlarge"
+  instance_type      = coalesce(local.allowed_outpost_instance_types...)
 
   # Ensure the local gateway attachment succeeds before deploying instances
   depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
@@ -257,7 +257,7 @@ module "tape_gateway" {
 
   gateway_name       = "tape-gateway"
   gateway_type       = "VTL"
-  instance_type      = "r5.xlarge"
+  instance_type      = coalesce(local.allowed_outpost_instance_types...)
 
   # Ensure the local gateway attachment succeeds before deploying instances
   depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
