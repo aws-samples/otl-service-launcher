@@ -83,7 +83,6 @@ resource "aws_security_group_rule" "emr_master_outbound" {
   cidr_blocks = ["0.0.0.0/0"]
 }
 
-
 # EMR Core security group
 resource "aws_security_group" "emr_core" {
   name        = "${var.username}-emr-core-sg"
@@ -114,6 +113,7 @@ resource "aws_security_group_rule" "emr_core_master" {
   to_port                  = 0
   source_security_group_id = aws_security_group.emr_master.id
 }
+
 resource "aws_security_group_rule" "emr_core_service_access" {
   security_group_id = aws_security_group.emr_core.id
   type              = "ingress"
@@ -125,6 +125,15 @@ resource "aws_security_group_rule" "emr_core_service_access" {
   source_security_group_id = aws_security_group.emr_service_access.id
 }
 
+resource "aws_security_group_rule" "emr_core_allow_egress" {
+  security_group_id = aws_security_group.emr_core.id
+  type              = "egress"
+  description              = "Allow all outbound traffic"
+  protocol                 = "-1"
+  from_port                = 0
+  to_port                  = 0
+  cidr_blocks = ["0.0.0.0/0"]
+}
 
 # EMR Service Access security group
 resource "aws_security_group" "emr_service_access" {
@@ -145,24 +154,14 @@ resource "aws_security_group_rule" "emr_service_access_9443" {
   source_security_group_id = aws_security_group.emr_master.id
 }
 
-resource "aws_security_group_rule" "emr_service_access_master_8443" {
+resource "aws_security_group_rule" "emr_service_access_allow_egress" {
   security_group_id = aws_security_group.emr_service_access.id
   type              = "egress"
-  description              = "Allow HTTPS traffic on port 8443 to the EMR Master security group"
-  protocol                 = "tcp"
-  from_port                = 8443
-  to_port                  = 8443
-  source_security_group_id = aws_security_group.emr_master.id
-}
-
-resource "aws_security_group_rule" "emr_service_access_core_8443" {
-  security_group_id = aws_security_group.emr_service_access.id
-  type              = "egress"
-  description              = "Allow HTTPS traffic on port 8443 to the EMR Core security group"
-  protocol                 = "tcp"
-  from_port                = 8443
-  to_port                  = 8443
-  source_security_group_id = aws_security_group.emr_core.id
+  description              = "Allow all outbound traffic"
+  protocol                 = "-1"
+  from_port                = 0
+  to_port                  = 0
+  cidr_blocks = ["0.0.0.0/0"]
 }
 
 # -----------------------------------------------------------------------------
