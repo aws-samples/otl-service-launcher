@@ -32,9 +32,21 @@ resource "aws_emr_cluster" "outpost_cluster" {
 
   configurations_json = file("${path.module}/emr_cluster_configurations.json")
 
-  service_role = aws_iam_role.iam_emr_service_role.arn
+  log_uri = "s3://${aws_s3_bucket.log_bucket.id}"
+
+  service_role = data.aws_iam_role.iam_emr_service_role.arn
 }
 
+# -----------------------------------------------------------------------------
+# S3 bucket for logging
+# -----------------------------------------------------------------------------
+
+resource "aws_s3_bucket" "log_bucket" {
+  bucket_prefix = "${var.username}-emr-logs"
+
+  # allows the stack to destroy cleanly but will delete your EMR log files in doing so
+  force_destroy = true
+}
 
 # -----------------------------------------------------------------------------
 # Security groups
@@ -169,31 +181,31 @@ resource "aws_security_group_rule" "emr_service_access_allow_egress" {
 # -----------------------------------------------------------------------------
 
 # IAM role for the EMR Service
-resource "aws_iam_role" "iam_emr_service_role" {
-  name               = "${var.username}_iam_emr_service_role"
-  assume_role_policy = file("${path.module}/iam_emr_assume_role_policy.json")
+data "aws_iam_role" "iam_emr_service_role" {
+  # this assumes that the EMR_DefaultRole already exists in the account
+  name               = "EMR_DefaultRole"
+#  assume_role_policy = file("${path.module}/iam_emr_assume_role_policy.json")
 
-  tags = var.tags
+#  tags = var.tags
 }
 
-resource "aws_iam_role_policy" "iam_emr_service_role_policy" {
-  name   = "iam_emr_service_policy"
-  role   = aws_iam_role.iam_emr_service_role.id
-  policy = file("${path.module}/iam_emr_service_role_policy.json")
-}
-
+#resource "aws_iam_role_policy" "iam_emr_service_role_policy" {
+#  name   = "iam_emr_service_policy"
+#  role   = aws_iam_role.iam_emr_service_role.id
+#  policy = file("${path.module}/iam_emr_service_role_policy.json")
+#}
 
 # IAM Role for the EC2 instance profile
-resource "aws_iam_instance_profile" "emr_profile" {
-  name = "${var.username}_emr_profile"
-  role = aws_iam_role.iam_emr_profile_role.name
-}
-
 resource "aws_iam_role" "iam_emr_profile_role" {
   name               = "${var.username}_iam_emr_profile_role"
   assume_role_policy = file("${path.module}/iam_ec2_assume_role_policy.json")
 
   tags = var.tags
+}
+
+resource "aws_iam_instance_profile" "emr_profile" {
+  name = "${var.username}_emr_profile"
+  role = aws_iam_role.iam_emr_profile_role.name
 }
 
 resource "aws_iam_role_policy" "iam_emr_profile_role_policy" {
