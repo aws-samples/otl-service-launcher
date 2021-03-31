@@ -41,13 +41,15 @@ resource "aws_emr_cluster" "outpost_cluster" {
 # -----------------------------------------------------------------------------
 
 # EMR Master security group
-# Configure the security group rules as separate resources to breck the circular references
 resource "aws_security_group" "emr_master" {
   name        = "${var.username}-emr-master-sg"
   description = "Amazon EMR-Managed Security Group for the Master Instance (Private Subnets)"
   vpc_id      = var.main_vpc_id
 
   tags = var.tags
+
+  # this is necessary to solve https://github.com/Outposts-Test-Lab/otl-service-launcher/issues/12
+  revoke_rules_on_delete = true
 }
 
 resource "aws_security_group_rule" "emr_master_self" {
@@ -105,6 +107,9 @@ resource "aws_security_group_rule" "emr_core_self" {
   self        = true
 }
 
+###############
+###############
+###############
 resource "aws_security_group_rule" "emr_core_master" {
   security_group_id = aws_security_group.emr_core.id
   type              = "ingress"
@@ -115,6 +120,10 @@ resource "aws_security_group_rule" "emr_core_master" {
   to_port                  = 0
   source_security_group_id = aws_security_group.emr_master.id
 }
+###############
+###############
+###############
+
 resource "aws_security_group_rule" "emr_core_service_access" {
   security_group_id = aws_security_group.emr_core.id
   type              = "ingress"
@@ -125,7 +134,6 @@ resource "aws_security_group_rule" "emr_core_service_access" {
   to_port                  = 8443
   source_security_group_id = aws_security_group.emr_service_access.id
 }
-
 
 # EMR Service Access security group
 resource "aws_security_group" "emr_service_access" {
