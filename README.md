@@ -149,3 +149,11 @@ otl_outpost_ids         = ["<<your-outpost-id>>"]
 ### Contributing
 
 If you find a problem, cut us an issue. If you solve a problem and/or add new functionality that you'd like to share, submit a PR! We welcome your contributions.
+
+## Security
+
+See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+
+## License
+
+This library is licensed under the MIT-0 License. See the LICENSE file.
