@@ -64,9 +64,11 @@ resource "aws_subnet" "region_az_1_public" {
   cidr_block              = local.region_az_1_public_subnet
   map_public_ip_on_launch = true
 
-  tags = merge(local.tags, zipmap(
-    ["Name", "kubernetes.io/cluster/${local.eks_cluster_name}", "kubernetes.io/role/elb"],
-    ["${var.username}-region-public-subnet-1", "shared", "1"]))
+  tags = merge(local.tags, {
+    "Name" = "${var.username}-region-public-subnet-1"
+    "kubernetes.io/cluster/${local.eks_cluster_name}" = "shared"
+    "kubernetes.io/role/elb" = "1"
+  })
 }
 
 resource "aws_subnet" "region_az_2_public" {
