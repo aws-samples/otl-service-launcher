@@ -15,7 +15,7 @@ resource "tls_private_key" "sgw_tls" {
 
 # create AWS key pair
 resource "aws_key_pair" "storagegateway" {
-  key_name = join("-",[var.username, "storage-gateway-key"])
+  key_name = join("-",[var.username, var.gateway_type])
   public_key = tls_private_key.sgw_tls.public_key_openssh
 }
 
@@ -46,13 +46,13 @@ resource "aws_instance" "storage_gateway_server" {
             volume_type = "gp2"
   }
   tags = {
-    Name = join("-",[var.username, "storage-gateway"])
+    Name = join("-",[var.username, var.gateway_type])
   }
 }
 
 # this security group will allow all traffic from amazon corpnet 
 resource "aws_security_group" "storage_gateway_sg" {
-  name = join("-",[var.username, "storage-gateway-activation-sg"])
+  name = join("-",[var.username, var.gateway_type, "activation-sg"])
   vpc_id = var.main_vpc_id
   ingress {
     prefix_list_ids = [lookup(var.region_prefixlist_mapping, var.region)]
@@ -122,10 +122,9 @@ data "aws_storagegateway_local_disk" "storage_gateway_buffer" {
 }
 
 resource "aws_storagegateway_upload_buffer" "buffer" {
+  count = var.gateway_type == "FILE_S3" ? 0 : 1
   disk_id = data.aws_storagegateway_local_disk.storage_gateway_buffer.id
   gateway_arn = aws_storagegateway_gateway.storage_gateway.arn
-
-  depends_on = [aws_volume_attachment.storage_gateway_attach_buffer]
 }
 
 resource "aws_storagegateway_cached_iscsi_volume" "example" {
