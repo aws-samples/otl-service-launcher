@@ -78,7 +78,7 @@ resource "aws_ebs_volume" "storage_gateway_server_cache_disk" {
     type = "gp2"
 }
 
-resource "aws_volume_attachment" "storage_gateway_attach" {
+resource "aws_volume_attachment" "storage_gateway_attach_cache" {
   device_name = "/dev/sdf"
   volume_id   = aws_ebs_volume.storage_gateway_server_cache_disk.id
   instance_id = aws_instance.storage_gateway_server.id
@@ -107,7 +107,7 @@ resource "aws_storagegateway_gateway" "storage_gateway" {
 }
 
 data "aws_storagegateway_local_disk" "storage_gateway_data" {
-  disk_node = aws_volume_attachment.storage_gateway_attach.device_name
+  disk_node = aws_volume_attachment.storage_gateway_attach_cache.device_name
   gateway_arn = aws_storagegateway_gateway.storage_gateway.arn
 }
 
@@ -123,7 +123,7 @@ data "aws_storagegateway_local_disk" "storage_gateway_buffer" {
 
 resource "aws_storagegateway_upload_buffer" "buffer" {
   count = var.gateway_type == "FILE_S3" ? 0 : 1
-  disk_id = data.aws_storagegateway_local_disk.storage_gateway_buffer.id
+  disk_path = data.aws_storagegateway_local_disk.storage_gateway_buffer.disk_path
   gateway_arn = aws_storagegateway_gateway.storage_gateway.arn
 }
 
