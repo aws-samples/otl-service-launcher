@@ -134,6 +134,23 @@ variable "on_prem_vpc" {
   description = "Deploy a VPC to simulate an on-premises network in the region and to enable connectivity to on-premises networks."
 }
 
+variable "file_gateway" {
+  type        = bool
+  default     = false
+  description = "Set this to true if you want to deploy a file gateway."
+}
+
+variable "volume_gateway" {
+  type        = bool
+  default     = false
+  description = "Set this to true if you want to deploy a volume gateway."
+}
+
+variable "tape_gateway" {
+  type        = bool
+  default     = false
+  description = "Set this to true if you want to deploy a tape gateway."
+}
 
 # -----------------------------------------------------------------------------
 # Simulated on-premises network variables
@@ -143,7 +160,6 @@ variable "on_prem_vpc_cidr" {
   description = "A /19 (minimum) CIDR block for the simulated on-premises VPC. By default, the module will generate a random CIDR block in the 172.16.0.0/12 range."
   default     = ""
 }
-
 
 # -----------------------------------------------------------------------------
 # Outposts Test Labs (OTL) variables

@@ -14,6 +14,9 @@ Deployable Services:
 * Amazon Relational Database Service (RDS) MySQL
 * Amazon Relational Database Service (RDS) PostgreSQL
 * Simulated on-premises VPC *[routed through the AWS Outpost's Local Gateway (LGW)]*
+* AWS Storage Gateway File Gateway
+* AWS Storage Gateway Volume Gateway
+* AWS Storage Gateway Tape Gateway
 
 ## Usage
 
@@ -44,6 +47,9 @@ There are three ways to use this module:
     mysql                   = false
     postgres                = false
     on_prem_vpc             = false
+    file_gateway            = false
+    volume_gateway          = false
+    tape_gateway            = false
 
 
     ❯ terraform apply
@@ -68,6 +74,10 @@ There are three ways to use this module:
       mysql                   = false
       postgres                = false
       on_prem_vpc             = false
+      file_gateway            = false
+      volume_gateway          = false
+      tape_gateway            = false
+
     }
     ```
 
@@ -140,6 +150,9 @@ eks_outpost_node_group  = false
 mysql                   = false
 postgres                = false
 on_prem_vpc             = false
+file_gateway            = false
+volume_gateway          = false
+tape_gateway            = false
 
 otl_outpost_ids         = ["<<your-outpost-id>>"]
 
