@@ -15,6 +15,14 @@ terraform {
       version = "~> 2.0.2"
     }
   }
+
+  backend "s3" {
+    bucket = "otl-terraform-state"
+    key    = "otl-service-launcher"
+    region = "us-west-2"
+    acl    = "bucket-owner-full-control"
+  }
+
 }
 
 
