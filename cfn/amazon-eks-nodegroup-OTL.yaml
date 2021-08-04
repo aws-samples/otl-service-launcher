@@ -77,10 +77,7 @@ Parameters:
     Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
     Default: /aws/service/eks/optimized-ami/1.17/amazon-linux-2/recommended/image_id
     Description: AWS Systems Manager Parameter Store parameter of the AMI ID for the worker node instances. Change this value to match the version of Kubernetes you are using.
-  
-  # OTLRoleArn:
-  #   Type: String
-  #   Default: !Sub 'arn:aws:iam::${AWS::AccountId}:role/outpost-shared-otl'
+ 
 
   DisableIMDSv1:
     Type: String
