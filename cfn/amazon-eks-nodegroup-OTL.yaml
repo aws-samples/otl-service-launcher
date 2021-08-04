@@ -279,7 +279,7 @@ Resources:
               VolumeSize: !Ref NodeVolumeSize
               VolumeType: gp2
         IamInstanceProfile:
-          Arn: !Sub 'arn:aws:iam::280066404755:instance-profile/node_instance_profile'
+          Arn: !Sub 'arn:aws:iam::${AWS::AccountId}:instance-profile/node_instance_profile'
         ImageId: !If
           - HasNodeImageId
           - !Ref NodeImageId
