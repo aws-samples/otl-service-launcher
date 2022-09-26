@@ -43,6 +43,15 @@ variable "allowed_instance_types" {
     "c5.2xlarge",
     "m5.2xlarge",
     "r5.2xlarge",
+    "c5d.large",
+    "m5d.large",
+    "r5d.large",
+    "c5d.xlarge",
+    "m5d.xlarge",
+    "r5d.xlarge",
+    "c5d.2xlarge",
+    "m5d.2xlarge",
+    "r5d.2xlarge",
   ]
 }
 
@@ -177,6 +186,7 @@ variable "otl_outpost_ids" {
     "op-0e32dade1930682b8",
     "op-06d594d204174c310",
     "op-09d4c743ed7a5780b",
-    "op-0cc27b83880c7d8e9"
+    "op-0cc27b83880c7d8e9",
+    "op-00d1c0eafad460113"
   ]
 }
