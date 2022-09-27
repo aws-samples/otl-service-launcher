@@ -45,7 +45,7 @@ module "eks_cluster" {
 
   cluster_name = local.eks_cluster_name
 
-  kubernetes_version = "1.18"
+  kubernetes_version = "1.23"
   service_ipv4_cidr  = "192.168.0.0/16"
 
   cluster_subnet_ids = [
@@ -64,7 +64,7 @@ module "eks_outposts_node_group" {
   tags = local.tags
 
   cluster_name       = local.eks_cluster_name
-  kubernetes_version = "1.18"
+  kubernetes_version = "1.23"
   outpost_subnet_id  = aws_subnet.outpost_private.id
   instance_type      = coalesce(local.allowed_outpost_instance_types...)
   security_group     = concat(module.eks_cluster[*].cluster_security_group_id, [""])[0]

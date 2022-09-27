@@ -35,23 +35,23 @@ variable "allowed_instance_types" {
   type = list(string)
   default = [
     "c5.large",
-    "m5.large",
-    "r5.large",
-    "c5.xlarge",
-    "m5.xlarge",
-    "r5.xlarge",
-    "c5.2xlarge",
-    "m5.2xlarge",
-    "r5.2xlarge",
-    "c5d.large",
-    "m5d.large",
-    "r5d.large",
-    "c5d.xlarge",
-    "m5d.xlarge",
-    "r5d.xlarge",
     "c5d.2xlarge",
+    "m5.large",
+    "m5d.large",
+    "r5.large",
+    "r5d.large",
+    "c5.xlarge",
+    "c5d.xlarge",
+    "m5.xlarge",
+    "m5d.xlarge",
+    "r5.xlarge",
+    "r5d.xlarge",
+    "c5.2xlarge",
+    "c5d.2xlarge",
+    "m5.2xlarge",
     "m5d.2xlarge",
-    "r5d.2xlarge",
+    "r5.2xlarge",
+    "r5d.2xlarge"
   ]
 }
 
