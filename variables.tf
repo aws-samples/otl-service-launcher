@@ -29,6 +29,11 @@ variable "main_vpc_cidr" {
   default     = ""
 }
 
+variable "eks_cluster_on_outpost_instance_type" {
+  type    = string
+  default = "c5.xlarge"
+}
+
 variable "allowed_instance_types" {
   description = "Set this list to the instance size(s), in priority order, that you would like to use as the default size for instances created by the OTL service launcher."
   # so that this script doesn't eat your large instance capacity by default

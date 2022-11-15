@@ -11,7 +11,7 @@ resource "random_string" "db_identifier_suffix" {
   length  = 6
   upper   = false
   lower   = true
-  number  = false
+  numeric = false
   special = false
 }
 

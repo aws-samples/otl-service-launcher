@@ -26,3 +26,12 @@ variable "service_ipv4_cidr" {
 variable "cluster_subnet_ids" {
   type = list(string)
 }
+
+variable "instance_type" {
+  type = string
+}
+
+variable "outpost_arn" {
+  type = set(string)
+
+}

@@ -2,7 +2,7 @@ resource "random_string" "cluster_id_suffix" {
   length  = 6
   upper   = false
   lower   = true
-  number  = false
+  numeric = false
   special = false
 }
 

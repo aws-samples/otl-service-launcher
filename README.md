@@ -36,6 +36,7 @@ There are three ways to use this module:
     ❯ cat otl.auto.tfvars
     username = "<<your-username>>"
     profile  = "<<your-aws-cli-profile>>"
+    region = "us-west-2"
 
     region_cloud9           = false
     outpost_cloud9          = false
@@ -64,6 +65,7 @@ There are three ways to use this module:
 
       username = "<<your-username>>"
       profile  = "<<your-aws-cli-profile>>"
+      region = "us-west-2"
 
       region_cloud9           = false
       outpost_cloud9          = false
@@ -142,6 +144,7 @@ That being said, this repo "should" "just work" if you set the `otl_outpost_ids`
 ❯ cat otl.auto.tfvars
 username = "<<your-username>>"
 profile  = "<<your-aws-cli-profile>>"
+region = "us-west-2"
 
 region_cloud9           = false
 outpost_cloud9          = false

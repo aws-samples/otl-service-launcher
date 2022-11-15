@@ -10,13 +10,18 @@ resource "aws_eks_cluster" "eks_cluster" {
   enabled_cluster_log_types = ["api", "audit"]
 
   vpc_config {
-    endpoint_public_access  = true
+    endpoint_public_access  = false
     endpoint_private_access = true
     subnet_ids              = var.cluster_subnet_ids
   }
 
-  kubernetes_network_config {
-    service_ipv4_cidr = var.service_ipv4_cidr
+#  kubernetes_network_config {
+#    service_ipv4_cidr = var.service_ipv4_cidr
+#  }
+
+  outpost_config {
+    control_plane_instance_type = var.instance_type
+    outpost_arns                = var.outpost_arn
   }
 
   tags = var.tags
@@ -42,8 +47,8 @@ resource "aws_iam_role" "iam_eks_service_role" {
   tags = var.tags
 }
 
-resource "aws_iam_role_policy_attachment" "amazon_eks_cluster_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+resource "aws_iam_role_policy_attachment" "amazon_eks_local_cluster_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSLocalOutpostClusterPolicy"
   role       = aws_iam_role.iam_eks_service_role.name
 }
 
