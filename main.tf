@@ -57,6 +57,26 @@ module "eks_cluster" {
   depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
 }
 
+module "eks_on_outposts" {
+  source = "./modules/eks_cluster_on_outposts"
+  count  = (var.eks && var.eks_cluster_on_outposts) ? 1 : 0
+  
+  tags = local.tags
+
+  cluster_name = local.eks_cluster_name
+
+  kubernetes_version = "1.23"
+  service_ipv4_cidr  = "192.168.0.0/16"
+
+  cluster_subnet_ids = [
+    aws_subnet.region_az_1_private.id,
+    aws_subnet.region_az_2_private.id,
+  ]
+
+  # Ensure the local gateway attachment succeeds before deploying instances
+  depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
+}
+
 module "eks_outposts_node_group" {
   source = "./modules/eks_outposts_node_group"
   count  = (var.eks && var.eks_outpost_node_group) ? 1 : 0

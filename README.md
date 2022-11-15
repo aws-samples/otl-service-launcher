@@ -43,6 +43,7 @@ There are three ways to use this module:
     memcached               = false
     redis                   = false
     eks                     = false
+    eks_on_outposts         = false
     eks_outpost_node_group  = false
     mysql                   = false
     postgres                = false
@@ -70,6 +71,7 @@ There are three ways to use this module:
       memcached               = false
       redis                   = false
       eks                     = false
+      eks_on_outposts         = false
       eks_outpost_node_group  = false
       mysql                   = false
       postgres                = false
@@ -112,6 +114,7 @@ Set these flags to true to deploy the desired services.
 | memcached | `false` | Deploy an ElastiCache Memcached instance on the Outpost. |
 | redis | `false` | Deploy an ElastiCache Redis instance on the Outpost. |
 | eks | `false` | Deploy an EKS cluster in the main VPC in the Region. |
+| eks_on_outposts | `false` | Deploy an EKS cluster on Outposts in the main VPC in the Region. |
 | eks_outpost_node_group | `false` | Deploy an EKS unmanaged node group on the Outpost and register the nodes with the EKS cluster deployed by the "eks" flag. |
 | mysql | `false` | Deploy an RDS MySQL instance on the Outpost. |
 | postgres | `false` | Deploy an RDS PostgreSQL instance on the Outpost. |
@@ -146,6 +149,7 @@ emr                     = false
 memcached               = false
 redis                   = false
 eks                     = false
+eks_on_outposts         = false
 eks_outpost_node_group  = false
 mysql                   = false
 postgres                = false

@@ -119,6 +119,13 @@ variable "eks_cluster" {
   description = "Deploy an EKS cluster in the main VPC."
 }
 
+variable "eks_cluster_on_outposts" {
+  type        = bool
+  default     = false
+  description = "Deploy an EKS cluster on Outposts in the main VPC."
+}
+
+
 variable "eks_outpost_node_group" {
   type        = bool
   default     = true
