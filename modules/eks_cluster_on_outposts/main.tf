@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 resource "aws_eks_cluster" "eks_cluster" {
   name     = var.cluster_name
-  role_arn = aws_iam_role.iam_eks_service_role.arn
+  role_arn = aws_iam_role.iam_eks_local_service_role.arn
 
   version = var.kubernetes_version
 
@@ -29,7 +29,7 @@ resource "aws_eks_cluster" "eks_cluster" {
   # Ensure that IAM Role permissions are created before and deleted after EKS Cluster handling.
   # Otherwise, EKS will not be able to properly delete EKS managed EC2 infrastructure such as Security Groups.
   depends_on = [
-    aws_iam_role_policy_attachment.amazon_eks_cluster_policy,
+    aws_iam_role_policy_attachment.amazon_eks_local_cluster_policy,
     aws_iam_role_policy_attachment.amazon_eks_vpc_resource_controller,
   ]
 }
@@ -40,8 +40,8 @@ resource "aws_eks_cluster" "eks_cluster" {
 # -----------------------------------------------------------------------------
 
 # IAM role for the EKS Service
-resource "aws_iam_role" "iam_eks_service_role" {
-  name               = "${var.cluster_name}-eks-service-role"
+resource "aws_iam_role" "iam_eks_local_service_role" {
+  name               = "${var.cluster_name}-eks-local-service-role"
   assume_role_policy = file("${path.module}/iam_eks_assume_role_policy.json")
 
   tags = var.tags
@@ -49,10 +49,10 @@ resource "aws_iam_role" "iam_eks_service_role" {
 
 resource "aws_iam_role_policy_attachment" "amazon_eks_local_cluster_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSLocalOutpostClusterPolicy"
-  role       = aws_iam_role.iam_eks_service_role.name
+  role       = aws_iam_role.iam_eks_local_service_role.name
 }
 
 resource "aws_iam_role_policy_attachment" "amazon_eks_vpc_resource_controller" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
-  role       = aws_iam_role.iam_eks_service_role.name
+  role       = aws_iam_role.iam_eks_local_service_role.name
 }

@@ -75,8 +75,8 @@ module "eks_on_outposts" {
   instance_type = coalesce(local.allowed_outpost_instance_types...)
 
   cluster_subnet_ids = [
-    aws_subnet.region_az_1_private.id,
-    aws_subnet.region_az_2_private.id,
+    aws_subnet.outpost_private.id,
+    aws_subnet.outpost_public.id
   ]
 
   # Ensure the local gateway attachment succeeds before deploying instances
