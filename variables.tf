@@ -197,8 +197,14 @@ variable "otl_outpost_ids" {
     "op-0c74f70820f79907c",
     "op-0e32dade1930682b8",
     "op-06d594d204174c310",
-    "op-09d4c743ed7a5780b",
     "op-0cc27b83880c7d8e9",
-    "op-00d1c0eafad460113"
+    "op-00d1c0eafad460113",
+    "op-0663daef268ef9183",
+    "op-045c7f4bd92d46621",
+    "op-0bc294da55e3d90ba",
+    "op-01959d4727998a00f",
+    "op-039f5eea8007fd18e",
+    "op-0ebf0663890064ba5",
+    "op-07d9c91d86a49bb5a"
   ]
 }
