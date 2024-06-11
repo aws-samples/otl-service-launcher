@@ -45,12 +45,42 @@ module "eks_cluster" {
 
   cluster_name = local.eks_cluster_name
 
-  kubernetes_version = "1.23"
+  kubernetes_version = "1.29"
   service_ipv4_cidr  = "192.168.0.0/16"
 
   cluster_subnet_ids = [
     aws_subnet.region_az_1_private.id,
     aws_subnet.region_az_2_private.id,
+  ]
+
+  # Ensure the local gateway attachment succeeds before deploying instances
+  depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
+}
+
+# -----------------------------------------------------------------------------
+# EKS local cluster
+# -----------------------------------------------------------------------------
+module "eks_local_cluster" {
+  source = "./modules/eks_local_cluster"
+  count  = (var.eks_local_cluster) ? 1 : 0
+  providers = {
+    kubernetes.eks_cluster = kubernetes.eks_cluster
+    kubernetes.local_cluster = kubernetes.local_cluster
+  }
+
+  tags = local.tags
+
+  cluster_name = local.eks_local_cluster_name
+
+  kubernetes_version = "1.28"
+  service_ipv4_cidr  = "192.168.0.0/16"
+
+  outpost_arn   = data.aws_outposts_outposts.all.arns
+  instance_type = coalesce(local.allowed_outpost_instance_types...)
+
+  cluster_subnet_ids = [
+    aws_subnet.outpost_private.id,
+    aws_subnet.outpost_public.id
   ]
 
   # Ensure the local gateway attachment succeeds before deploying instances
@@ -64,11 +94,29 @@ module "eks_outposts_node_group" {
   tags = local.tags
 
   cluster_name       = local.eks_cluster_name
-  kubernetes_version = "1.23"
+  kubernetes_version = "1.29"
   outpost_subnet_id  = aws_subnet.outpost_private.id
   instance_type      = coalesce(local.allowed_outpost_instance_types...)
   security_group     = concat(module.eks_cluster[*].cluster_security_group_id, [""])[0]
+  # Ensure the local gateway attachment succeeds before deploying instances
+  depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
+}
 
+module "eks_local_cluster_node_group" {
+  source = "./modules/eks_local_cluster_node_group"
+  count  = (var.eks_local_cluster && var.eks_local_cluster_node_group) ? 1 : 0
+  providers = {
+    kubernetes.eks_cluster = kubernetes.eks_cluster
+    kubernetes.local_cluster = kubernetes.local_cluster
+  }
+
+  tags = local.tags
+
+  cluster_name       = local.eks_local_cluster_name
+  kubernetes_version = "1.28"
+  outpost_subnet_id  = aws_subnet.outpost_private.id
+  instance_type      = coalesce(local.allowed_outpost_instance_types...)
+  security_group = concat(module.eks_local_cluster[*].local_cluster_security_group_id, [""])[0]
   # Ensure the local gateway attachment succeeds before deploying instances
   depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
 }
@@ -211,13 +259,13 @@ module "file_gateway" {
   tags     = local.tags
 
   main_vpc_id = aws_vpc.main_vpc.id
-  subnet_id = aws_subnet.outpost_public.id
-  op_id = data.aws_outposts_outpost.selected.id
-  region = var.region
+  subnet_id   = aws_subnet.outpost_public.id
+  op_id       = data.aws_outposts_outpost.selected.id
+  region      = var.region
 
-  gateway_name       = "file-gateway"
-  gateway_type       = "FILE_S3"
-  instance_type      = coalesce(local.allowed_outpost_instance_types...)
+  gateway_name  = "file-gateway"
+  gateway_type  = "FILE_S3"
+  instance_type = coalesce(local.allowed_outpost_instance_types...)
 
   # Ensure the local gateway attachment succeeds before deploying instances
   depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
@@ -231,13 +279,13 @@ module "volume_gateway" {
   tags     = local.tags
 
   main_vpc_id = aws_vpc.main_vpc.id
-  subnet_id = aws_subnet.outpost_public.id
-  op_id = data.aws_outposts_outpost.selected.id
-  region = var.region
+  subnet_id   = aws_subnet.outpost_public.id
+  op_id       = data.aws_outposts_outpost.selected.id
+  region      = var.region
 
-  gateway_name       = "volume-gateway"
-  gateway_type       = "CACHED"
-  instance_type      = coalesce(local.allowed_outpost_instance_types...)
+  gateway_name  = "volume-gateway"
+  gateway_type  = "CACHED"
+  instance_type = coalesce(local.allowed_outpost_instance_types...)
 
   # Ensure the local gateway attachment succeeds before deploying instances
   depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
@@ -248,16 +296,16 @@ module "tape_gateway" {
   count  = var.tape_gateway ? 1 : 0
 
   username = var.username
-  tags     = local.tags  
+  tags     = local.tags
 
   main_vpc_id = aws_vpc.main_vpc.id
-  subnet_id = aws_subnet.outpost_public.id
-  op_id = data.aws_outposts_outpost.selected.id
-  region = var.region
+  subnet_id   = aws_subnet.outpost_public.id
+  op_id       = data.aws_outposts_outpost.selected.id
+  region      = var.region
 
-  gateway_name       = "tape-gateway"
-  gateway_type       = "VTL"
-  instance_type      = coalesce(local.allowed_outpost_instance_types...)
+  gateway_name  = "tape-gateway"
+  gateway_type  = "VTL"
+  instance_type = coalesce(local.allowed_outpost_instance_types...)
 
   # Ensure the local gateway attachment succeeds before deploying instances
   depends_on = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]

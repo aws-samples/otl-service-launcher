@@ -15,14 +15,14 @@ resource "tls_private_key" "sgw_tls" {
 
 # create AWS key pair
 resource "aws_key_pair" "storagegateway" {
-  key_name = join("-",[var.username, var.gateway_type])
+  key_name   = join("-", [var.username, var.gateway_type])
   public_key = tls_private_key.sgw_tls.public_key_openssh
 }
 
 # get the most recent storage gateway AMI
 data "aws_ami" "sg_ami" {
-  most_recent      = true
-  owners           = ["amazon"]
+  most_recent = true
+  owners      = ["amazon"]
   filter {
     name   = "name"
     values = ["aws-storage-gateway*"]
@@ -35,35 +35,35 @@ data "aws_ami" "sg_ami" {
 
 # create the instance
 resource "aws_instance" "storage_gateway_server" {
-  ami = data.aws_ami.sg_ami.image_id
-  instance_type = var.instance_type
+  ami                         = data.aws_ami.sg_ami.image_id
+  instance_type               = var.instance_type
   associate_public_ip_address = true
-  key_name = aws_key_pair.storagegateway.key_name
-  subnet_id = var.subnet_id
-  vpc_security_group_ids = [aws_security_group.storage_gateway_sg.id]
+  key_name                    = aws_key_pair.storagegateway.key_name
+  subnet_id                   = var.subnet_id
+  vpc_security_group_ids      = [aws_security_group.storage_gateway_sg.id]
   root_block_device {
-            volume_size = 80
-            volume_type = "gp2"
+    volume_size = 80
+    volume_type = "gp2"
   }
   tags = {
-    Name = join("-",[var.username, var.gateway_type])
+    Name = join("-", [var.username, var.gateway_type])
   }
 }
 
 # this security group will allow all traffic from amazon corpnet 
 resource "aws_security_group" "storage_gateway_sg" {
-  name = join("-",[var.username, var.gateway_type, "activation-sg"])
+  name   = join("-", [var.username, var.gateway_type, "activation-sg"])
   vpc_id = var.main_vpc_id
   ingress {
     prefix_list_ids = [lookup(var.region_prefixlist_mapping, var.region)]
-    protocol = "-1"
-    from_port = 0
-    to_port = 0
+    protocol        = "-1"
+    from_port       = 0
+    to_port         = 0
   }
   egress {
-    protocol = "-1"
-    from_port = 0
-    to_port = 0
+    protocol    = "-1"
+    from_port   = 0
+    to_port     = 0
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
@@ -71,11 +71,11 @@ resource "aws_security_group" "storage_gateway_sg" {
 ### create two EBS volumes and attach them to the storage gateway
 
 resource "aws_ebs_volume" "storage_gateway_server_cache_disk" {
-    availability_zone = data.aws_outposts_outpost.op.availability_zone
-    outpost_arn = data.aws_outposts_outpost.op.arn
-    size = 150
-    encrypted = true
-    type = "gp2"
+  availability_zone = data.aws_outposts_outpost.op.availability_zone
+  outpost_arn       = data.aws_outposts_outpost.op.arn
+  size              = 150
+  encrypted         = true
+  type              = "gp2"
 }
 
 resource "aws_volume_attachment" "storage_gateway_attach_cache" {
@@ -85,11 +85,11 @@ resource "aws_volume_attachment" "storage_gateway_attach_cache" {
 }
 
 resource "aws_ebs_volume" "storage_gateway_server_buffer_disk" {
-    availability_zone = data.aws_outposts_outpost.op.availability_zone
-    outpost_arn = data.aws_outposts_outpost.op.arn
-    size = 150
-    encrypted = true
-    type = "gp2"
+  availability_zone = data.aws_outposts_outpost.op.availability_zone
+  outpost_arn       = data.aws_outposts_outpost.op.arn
+  size              = 150
+  encrypted         = true
+  type              = "gp2"
 }
 
 resource "aws_volume_attachment" "storage_gateway_attach_buffer" {
@@ -107,7 +107,7 @@ resource "aws_storagegateway_gateway" "storage_gateway" {
 }
 
 data "aws_storagegateway_local_disk" "storage_gateway_data" {
-  disk_node = aws_volume_attachment.storage_gateway_attach_cache.device_name
+  disk_node   = aws_volume_attachment.storage_gateway_attach_cache.device_name
   gateway_arn = aws_storagegateway_gateway.storage_gateway.arn
 }
 
@@ -122,21 +122,21 @@ data "aws_storagegateway_local_disk" "storage_gateway_buffer" {
 }
 
 resource "aws_storagegateway_upload_buffer" "buffer" {
-  count = var.gateway_type == "FILE_S3" ? 0 : 1
-  disk_path = data.aws_storagegateway_local_disk.storage_gateway_buffer.disk_path
+  count       = var.gateway_type == "FILE_S3" ? 0 : 1
+  disk_path   = data.aws_storagegateway_local_disk.storage_gateway_buffer.disk_path
   gateway_arn = aws_storagegateway_gateway.storage_gateway.arn
 }
 
 resource "aws_storagegateway_cached_iscsi_volume" "example" {
-  count = var.gateway_type == "CACHED" ? 1 : 0
+  count                = var.gateway_type == "CACHED" ? 1 : 0
   gateway_arn          = aws_storagegateway_cache.storage_gateway_cache.gateway_arn
   network_interface_id = aws_instance.storage_gateway_server.private_ip
-  target_name          = join("-",[var.username, "target-volume"])
+  target_name          = join("-", [var.username, "target-volume"])
   volume_size_in_bytes = 5368709120 # 5 GB
 }
 
-resource "aws_iam_role" "transfer_role" { 
-  name = join("-",[var.username, var.gateway_name, "role"])
+resource "aws_iam_role" "transfer_role" {
+  name               = join("-", [var.username, var.gateway_name, "role"])
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -155,9 +155,9 @@ EOF
 }
 
 resource "aws_iam_policy" "transfer_policy_sg" {
-  name = join("-",[var.username, var.gateway_name, "policy"])
+  name        = join("-", [var.username, var.gateway_name, "policy"])
   description = "Allows access to storage gateway"
-  policy = <<EOF
+  policy      = <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -193,15 +193,15 @@ EOF
 }
 
 resource "aws_iam_policy_attachment" "transfer_attach" {
-  name = join("-",[var.username, var.gateway_name, "attach"])
-  roles = [aws_iam_role.transfer_role.name]
+  name       = join("-", [var.username, var.gateway_name, "attach"])
+  roles      = [aws_iam_role.transfer_role.name]
   policy_arn = aws_iam_policy.transfer_policy_sg.arn
 }
 
 resource "aws_s3_bucket" "backup_test_bucket" {
-  acl    = "private"
+  acl = "private"
   tags = {
-    Name = join("-",[var.username, var.gateway_name, "bucket"])
+    Name        = join("-", [var.username, var.gateway_name, "bucket"])
     Environment = "Dev"
   }
 }

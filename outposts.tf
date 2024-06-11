@@ -23,3 +23,7 @@ data "aws_ec2_coip_pool" "outpost_coip_pool" {
 data "aws_outposts_outpost_instance_types" "slots" {
   arn = data.aws_outposts_outpost.selected.arn
 }
+
+output "outpost_ids" {
+  value = data.aws_outposts_outposts.all.ids
+}

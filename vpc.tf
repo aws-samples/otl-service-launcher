@@ -65,9 +65,9 @@ resource "aws_subnet" "region_az_1_public" {
   map_public_ip_on_launch = true
 
   tags = merge(local.tags, {
-    "Name" = "${var.username}-region-public-subnet-1"
+    "Name"                                            = "${var.username}-region-public-subnet-1"
     "kubernetes.io/cluster/${local.eks_cluster_name}" = "shared"
-    "kubernetes.io/role/elb" = "1"
+    "kubernetes.io/role/elb"                          = "1"
   })
 }
 
@@ -78,9 +78,9 @@ resource "aws_subnet" "region_az_2_public" {
   map_public_ip_on_launch = true
 
   tags = merge(local.tags, {
-    "Name" = "${var.username}-region-public-subnet-1"
+    "Name"                                            = "${var.username}-region-public-subnet-1"
     "kubernetes.io/cluster/${local.eks_cluster_name}" = "shared"
-    "kubernetes.io/role/elb" = "1"
+    "kubernetes.io/role/elb"                          = "1"
   })
 }
 
@@ -90,9 +90,9 @@ resource "aws_subnet" "region_az_1_private" {
   cidr_block        = local.region_az_1_private_subnet
 
   tags = merge(local.tags, {
-    "Name" = "${var.username}-region-private-subnet-1"
+    "Name"                                            = "${var.username}-region-private-subnet-1"
     "kubernetes.io/cluster/${local.eks_cluster_name}" = "shared"
-    "kubernetes.io/role/internal-elb" = "1"
+    "kubernetes.io/role/internal-elb"                 = "1"
   })
 }
 
@@ -102,9 +102,9 @@ resource "aws_subnet" "region_az_2_private" {
   cidr_block        = local.region_az_2_private_subnet
 
   tags = merge(local.tags, {
-    "Name" = "${var.username}-region-private-subnet-2"
+    "Name"                                            = "${var.username}-region-private-subnet-2"
     "kubernetes.io/cluster/${local.eks_cluster_name}" = "shared"
-    "kubernetes.io/role/internal-elb" = "1"
+    "kubernetes.io/role/internal-elb"                 = "1"
   })
 }
 
@@ -210,9 +210,9 @@ resource "aws_subnet" "outpost_public" {
   map_public_ip_on_launch = true
 
   tags = merge(local.tags, {
-    "Name" = "${var.username}-outpost-public-subnet"
+    "Name"                                            = "${var.username}-outpost-public-subnet"
     "kubernetes.io/cluster/${local.eks_cluster_name}" = "shared"
-    "kubernetes.io/role/elb" = "1"
+    "kubernetes.io/role/elb"                          = "1"
   })
 }
 
@@ -225,9 +225,9 @@ resource "aws_subnet" "outpost_private" {
   map_customer_owned_ip_on_launch = true
 
   tags = merge(local.tags, {
-    "Name" = "${var.username}-outpost-private-subnet"
+    "Name"                                            = "${var.username}-outpost-private-subnet"
     "kubernetes.io/cluster/${local.eks_cluster_name}" = "shared"
-    "kubernetes.io/role/internal-elb" = "1"
+    "kubernetes.io/role/internal-elb"                 = "1"
   })
 }
 

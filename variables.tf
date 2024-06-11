@@ -20,13 +20,18 @@ variable "profile" {
 variable "region" {
   type        = string
   description = "The parent region of the Outposts Test Lab (OTL) rack. The main VPC will be deployed in this region and the VPC extended to the Outpost."
-  default     = "us-west-2"
+  default     = "eu-central-1"
 }
 
 variable "main_vpc_cidr" {
   type        = string
   description = "A /16 CIDR block for the main VPC (extended to the Outpost). By default, the module will generate a random 10.x.0.0/16 VPC CIDR block."
   default     = ""
+}
+
+variable "eks_local_cluster_instance_type" {
+  type    = string
+  default = "c5.xlarge"
 }
 
 variable "allowed_instance_types" {
@@ -119,10 +124,23 @@ variable "eks_cluster" {
   description = "Deploy an EKS cluster in the main VPC."
 }
 
+variable "eks_local_cluster" {
+  type        = bool
+  default     = false
+  description = "Deploy an EKS local cluster on Outposts in the main VPC."
+}
+
+
 variable "eks_outpost_node_group" {
   type        = bool
   default     = true
   description = "Deploy a self-managed EKS node group on the Outpost."
+}
+
+variable "eks_local_cluster_node_group" {
+  type        = bool
+  default     = true
+  description = "Deploy a self-managed EKS node group for local cluster on the Outpost."
 }
 
 variable "mysql" {
