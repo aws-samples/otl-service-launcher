@@ -8,6 +8,8 @@ resource "aws_autoscaling_group" "eks_outposts_node_group" {
   min_size           = var.min_size
   max_size           = var.max_size
 
+  #provider = kubernetes.cluster2  
+
   launch_template {
     id      = aws_launch_template.eks_nodes.id
     version = "$Latest"
@@ -47,6 +49,7 @@ resource "aws_launch_template" "eks_nodes" {
   name_prefix = "${var.cluster_name}-${var.node_group_name}-node"
   description = "Amazon EKS on Outposts self-managed node launch template"
 
+  #provider = kubernetes.cluster2  
   image_id      = data.aws_ami.eks_node.id
   instance_type = var.instance_type
   user_data     = base64encode(data.template_file.user_data.rendered)
@@ -124,26 +127,31 @@ data "template_file" "user_data" {
 resource "aws_iam_instance_profile" "eks_outposts_node_group" {
   name = "${var.cluster_name}-eks-node-group-instance-profile"
   role = aws_iam_role.eks_outposts_node_group.name
+  #provider = kubernetes.cluster2  
 }
 
 resource "aws_iam_role" "eks_outposts_node_group" {
   name               = "${var.cluster_name}-${var.node_group_name}-eks-node-group-role"
   assume_role_policy = file("${path.module}/iam_ec2_assume_role_policy.json")
+  #provider = kubernetes.cluster2  
 }
 
 resource "aws_iam_role_policy_attachment" "amazon_eks_worker_node_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
   role       = aws_iam_role.eks_outposts_node_group.name
+  #provider = kubernetes.cluster2  
 }
 
 resource "aws_iam_role_policy_attachment" "amazon_eks_cni_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
   role       = aws_iam_role.eks_outposts_node_group.name
+  #provider = kubernetes.cluster2  
 }
 
 resource "aws_iam_role_policy_attachment" "amazon_ec2_container_registry_read_only" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
   role       = aws_iam_role.eks_outposts_node_group.name
+  #provider = kubernetes.cluster2  
 }
 
 
@@ -155,6 +163,7 @@ resource "aws_iam_role_policy_attachment" "amazon_ec2_container_registry_read_on
 # cluster from within the private VPC.
 # https://docs.aws.amazon.com/eks/latest/userguide/launch-workers.html
 resource "kubernetes_config_map" "aws_auth" {
+  provider = kubernetes.local_cluster 
   metadata {
     name      = "aws-auth"
     namespace = "kube-system"

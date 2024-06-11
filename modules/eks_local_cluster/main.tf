@@ -1,10 +1,11 @@
 # -----------------------------------------------------------------------------
 # Region EKS cluster
 # -----------------------------------------------------------------------------
-resource "aws_eks_cluster" "eks_cluster" {
+resource "aws_eks_cluster" "eks_local_cluster" {
+  #provider = kubernetes.local_cluster
   name     = var.cluster_name
   role_arn = aws_iam_role.iam_eks_local_service_role.arn
-
+ 
   version = var.kubernetes_version
 
   enabled_cluster_log_types = ["api", "audit"]
@@ -41,18 +42,20 @@ resource "aws_eks_cluster" "eks_cluster" {
 
 # IAM role for the EKS Service
 resource "aws_iam_role" "iam_eks_local_service_role" {
+  #provider = kubernetes.local_cluster
   name               = "${var.cluster_name}-eks-local-service-role"
   assume_role_policy = file("${path.module}/iam_eks_assume_role_policy.json")
-
   tags = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "amazon_eks_local_cluster_policy" {
+  #provider = kubernetes.local_cluster
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSLocalOutpostClusterPolicy"
   role       = aws_iam_role.iam_eks_local_service_role.name
 }
 
 resource "aws_iam_role_policy_attachment" "amazon_eks_vpc_resource_controller" {
+  #provider = kubernetes.local_cluster
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
   role       = aws_iam_role.iam_eks_local_service_role.name
 }

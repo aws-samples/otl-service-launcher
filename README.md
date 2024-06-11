@@ -38,20 +38,21 @@ There are three ways to use this module:
     profile  = "<<your-aws-cli-profile>>"
     region = "us-west-2"
 
-    region_cloud9           = false
-    outpost_cloud9          = false
-    emr                     = false 
-    memcached               = false
-    redis                   = false
-    eks                     = false
-    eks_on_outposts         = false
-    eks_outpost_node_group  = false
-    mysql                   = false
-    postgres                = false
-    on_prem_vpc             = false
-    file_gateway            = false
-    volume_gateway          = false
-    tape_gateway            = false
+    region_cloud9                 = false
+    outpost_cloud9                = false
+    emr                           = false 
+    memcached                     = false
+    redis                         = false
+    eks                           = false
+    eks_local_cluster             = false
+    eks_outpost_node_group        = false
+    eks_local_cluster_node_group  = false
+    mysql                         = false
+    postgres                      = false
+    on_prem_vpc                   = false
+    file_gateway                  = false
+    volume_gateway                = false
+    tape_gateway                  = false
 
 
     ❯ terraform apply
@@ -67,22 +68,21 @@ There are three ways to use this module:
       profile  = "<<your-aws-cli-profile>>"
       region = "us-west-2"
 
-      region_cloud9           = false
-      outpost_cloud9          = false
-      emr                     = false
-      memcached               = false
-      redis                   = false
-      eks                     = false
-      eks_on_outposts         = false
-      eks_outpost_node_group  = false
-      mysql                   = false
-      postgres                = false
-      on_prem_vpc             = false
-      file_gateway            = false
-      volume_gateway          = false
-      tape_gateway            = false
-
-    }
+      
+      region_cloud9                 = false
+      outpost_cloud9                = false
+      emr                           = false 
+      memcached                     = false
+      redis                         = false
+      eks                           = false
+      eks_local_cluster             = false
+      eks_outpost_node_group        = false
+      eks_local_cluster_node_group  = false
+      mysql                         = false
+      postgres                      = false
+      on_prem_vpc                   = false
+      file_gateway                  = false
+      volume_gateway                = false
     ```
 
 ## Input variables

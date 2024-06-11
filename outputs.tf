@@ -37,6 +37,18 @@ output "eks_cluster_ca_cert" {
   sensitive = true
 }
 
+# -----------------------------------------------------------------------------
+# EKS Local Cluster
+# -----------------------------------------------------------------------------
+output "eks_local_cluster_endpoint" {
+  value = concat(module.eks_local_cluster[*].local_cluster_endpoint, [""])[0]
+}
+
+output "eks_local_cluster_ca_cert" {
+  value     = concat(module.eks_local_cluster[*].local_cluster_ca_cert, [""])[0]
+  sensitive = true
+}
+
 
 # -----------------------------------------------------------------------------
 # EMR
