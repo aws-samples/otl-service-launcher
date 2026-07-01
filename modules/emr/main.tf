@@ -3,6 +3,9 @@ resource "aws_emr_cluster" "outpost_cluster" {
   release_label = var.release_label
   applications  = ["Spark"]
 
+  # Force gp2 root volume on Outposts (7.x AMIs default to gp3 which isn't available)
+  ebs_root_volume_size = 15
+
   ec2_attributes {
     subnet_id                         = var.subnet_id
     emr_managed_master_security_group = aws_security_group.emr_master.id
@@ -107,6 +110,17 @@ resource "aws_security_group_rule" "emr_core_self" {
   self        = true
 }
 
+resource "aws_security_group_rule" "emr_core_egress" {
+  security_group_id = aws_security_group.emr_core.id
+  type              = "egress"
+
+  description = "Allow all outbound traffic"
+  protocol    = "-1"
+  from_port   = 0
+  to_port     = 0
+  cidr_blocks = ["0.0.0.0/0"]
+}
+
 ###############
 ###############
 ###############
@@ -176,10 +190,9 @@ resource "aws_iam_role" "iam_emr_service_role" {
   tags = var.tags
 }
 
-resource "aws_iam_role_policy" "iam_emr_service_role_policy" {
-  name   = "iam_emr_service_policy"
-  role   = aws_iam_role.iam_emr_service_role.id
-  policy = file("${path.module}/iam_emr_service_role_policy.json")
+resource "aws_iam_role_policy_attachment" "iam_emr_service_role_policy" {
+  role       = aws_iam_role.iam_emr_service_role.id
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceRole"
 }
 
 
@@ -200,4 +213,9 @@ resource "aws_iam_role_policy" "iam_emr_profile_role_policy" {
   name   = "iam_emr_profile_policy"
   role   = aws_iam_role.iam_emr_profile_role.id
   policy = file("${path.module}/iam_emr_profile_role_policy.json")
+}
+
+resource "aws_iam_role_policy_attachment" "emr_profile_ssm" {
+  role       = aws_iam_role.iam_emr_profile_role.id
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }

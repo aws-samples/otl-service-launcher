@@ -199,7 +199,6 @@ resource "aws_iam_policy_attachment" "transfer_attach" {
 }
 
 resource "aws_s3_bucket" "backup_test_bucket" {
-  acl = "private"
   tags = {
     Name        = join("-", [var.username, var.gateway_name, "bucket"])
     Environment = "Dev"

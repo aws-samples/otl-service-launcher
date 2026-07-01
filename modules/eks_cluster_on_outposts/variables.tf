@@ -1,11 +1,6 @@
 # -----------------------------------------------------------------------------
 # Common module variables
 # -----------------------------------------------------------------------------
-variable "username" {
-  type        = string
-  description = "Your username - will be prepended to most resource names to track what's yours."
-}
-
 variable "tags" {
   type        = map(any)
   default     = {}
@@ -14,20 +9,32 @@ variable "tags" {
 
 
 # -----------------------------------------------------------------------------
-# Cloud9 variables
+# EKS variables
 # -----------------------------------------------------------------------------
-variable "location" {
+variable "cluster_name" {
   type = string
 }
 
-variable "subnet_id" {
+variable "kubernetes_version" {
   type = string
 }
 
+variable "service_ipv4_cidr" {
+  type = string
+}
+
+variable "cluster_subnet_ids" {
+  type = list(string)
+}
+
+# -----------------------------------------------------------------------------
+# EKS  Local Cluster variables
+# -----------------------------------------------------------------------------
 variable "instance_type" {
   type = string
 }
 
-variable "automatic_stop_time_minutes" {
-  type = number
+variable "outpost_arn" {
+  type = set(string)
+
 }

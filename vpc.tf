@@ -9,6 +9,10 @@ resource "random_integer" "main_vpc_cidr" {
 
 data "aws_availability_zones" "available" {
   state = "available"
+  filter {
+    name   = "opt-in-status"
+    values = ["opt-in-not-required"]
+  }
 }
 
 locals {
@@ -54,6 +58,44 @@ resource "aws_vpc" "main_vpc" {
   tags = merge(local.tags, {
     Name = "${var.username}-main-vpc"
   })
+}
+
+# Clean up VPC endpoints (created by GuardDuty, SSM, etc.) before destroying
+# subnets. These are not Terraform-managed and block subnet deletion.
+# This resource depends on subnets so it's destroyed BEFORE them (reverse order).
+resource "null_resource" "cleanup_vpc_endpoints" {
+  triggers = {
+    vpc_id = aws_vpc.main_vpc.id
+    region = var.region
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<-EOT
+      echo "Cleaning up VPC endpoints in ${self.triggers.vpc_id}..."
+      ENDPOINTS=$(aws ec2 describe-vpc-endpoints \
+        --filters "Name=vpc-id,Values=${self.triggers.vpc_id}" \
+        --query 'VpcEndpoints[].VpcEndpointId' --output text \
+        --region ${self.triggers.region} 2>/dev/null)
+      if [ -n "$ENDPOINTS" ]; then
+        for ep in $ENDPOINTS; do
+          echo "Deleting VPC endpoint: $ep"
+          aws ec2 delete-vpc-endpoints --vpc-endpoint-ids "$ep" --region ${self.triggers.region} 2>/dev/null || true
+        done
+        echo "Waiting for ENIs to detach..."
+        sleep 30
+      fi
+    EOT
+  }
+
+  depends_on = [
+    aws_subnet.region_az_1_private,
+    aws_subnet.region_az_2_private,
+    aws_subnet.region_az_1_public,
+    aws_subnet.region_az_2_public,
+    aws_subnet.outpost_private,
+    aws_subnet.outpost_public,
+  ]
 }
 
 
@@ -125,7 +167,7 @@ resource "aws_internet_gateway" "main_vpc_igw" {
 # NAT Gateway
 # -----------------------------------------------------------------------------
 resource "aws_eip" "main_vpc_nat_gw_eip" {
-  vpc        = true
+  domain     = "vpc"
   depends_on = [aws_internet_gateway.main_vpc_igw]
 
   tags = merge(local.tags, {
@@ -221,8 +263,8 @@ resource "aws_subnet" "outpost_private" {
   availability_zone               = data.aws_outposts_outpost.selected.availability_zone
   outpost_arn                     = data.aws_outposts_outpost.selected.arn
   cidr_block                      = local.outpost_private_subnet
-  customer_owned_ipv4_pool        = data.aws_ec2_coip_pool.outpost_coip_pool.pool_id
-  map_customer_owned_ip_on_launch = true
+  customer_owned_ipv4_pool        = local.has_coip ? local.coip_pool_id : null
+  map_customer_owned_ip_on_launch = local.has_coip ? true : null
 
   tags = merge(local.tags, {
     "Name"                                            = "${var.username}-outpost-private-subnet"
@@ -265,7 +307,7 @@ resource "aws_route_table_association" "outpost_private_subnet" {
 # Local gateway (lgw) route table association
 resource "aws_ec2_local_gateway_route_table_vpc_association" "lgw_association" {
   vpc_id                       = aws_vpc.main_vpc.id
-  local_gateway_route_table_id = data.aws_ec2_local_gateway_route_table.lgw_rtb.id
+  local_gateway_route_table_id = local.lgw_rtb_id
 }
 
 
@@ -287,7 +329,7 @@ resource "aws_route" "outpost_public_lgw_route" {
 
   route_table_id         = aws_route_table.outpost_public_routes.id
   destination_cidr_block = module.on_prem_vpc[0].on_prem_vpc_cidr
-  local_gateway_id       = data.aws_ec2_local_gateway_route_table.lgw_rtb.local_gateway_id
+  local_gateway_id       = data.aws_ec2_local_gateway_route_table.selected.local_gateway_id
   depends_on             = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
 }
 
@@ -296,7 +338,7 @@ resource "aws_route" "outpost_private_lgw_route" {
 
   route_table_id         = aws_route_table.outpost_private_routes.id
   destination_cidr_block = module.on_prem_vpc[0].on_prem_vpc_cidr
-  local_gateway_id       = data.aws_ec2_local_gateway_route_table.lgw_rtb.local_gateway_id
+  local_gateway_id       = data.aws_ec2_local_gateway_route_table.selected.local_gateway_id
   depends_on             = [aws_ec2_local_gateway_route_table_vpc_association.lgw_association]
 }
 

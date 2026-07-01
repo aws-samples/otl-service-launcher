@@ -6,13 +6,13 @@ AWS customers, partners, and Solutions Architects using the Outposts Test Labs (
 
 Deployable Services:
 
-* AWS Cloud9 *[bastion instances]*
-* Amazon EMR
-* Amazon ElastiCache Memcached
-* Amazon ElastiCache Redis
-* Amazon Elastic Kubernetes Service (EKS)
-* Amazon Relational Database Service (RDS) MySQL
-* Amazon Relational Database Service (RDS) PostgreSQL
+* Amazon EMR (v7.13.0)
+* Amazon ElastiCache Memcached (v1.6.22)
+* Amazon ElastiCache Redis (v7.1)
+* Amazon EKS Extended Cluster *[control plane in Region, worker nodes on Outpost]* (v1.33)
+* Amazon EKS Local Cluster *[control plane and data plane on Outpost]* (v1.32)
+* Amazon Relational Database Service (RDS) MySQL (v8.0.39)
+* Amazon Relational Database Service (RDS) PostgreSQL (v16.4)
 * Simulated on-premises VPC *[routed through the AWS Outpost's Local Gateway (LGW)]*
 * AWS Storage Gateway File Gateway
 * AWS Storage Gateway Volume Gateway
@@ -38,21 +38,18 @@ There are three ways to use this module:
     profile  = "<<your-aws-cli-profile>>"
     region = "us-west-2"
 
-    region_cloud9                 = false
-    outpost_cloud9                = false
-    emr                           = false 
-    memcached                     = false
-    redis                         = false
-    eks                           = false
-    eks_local_cluster             = false
-    eks_outpost_node_group        = false
-    eks_local_cluster_node_group  = false
-    mysql                         = false
-    postgres                      = false
-    on_prem_vpc                   = false
-    file_gateway                  = false
-    volume_gateway                = false
-    tape_gateway                  = false
+    emr                     = false 
+    memcached               = false
+    redis                   = false
+    eks                     = false
+    eks_on_outposts         = false
+    eks_outpost_node_group  = false
+    mysql                   = false
+    postgres                = false
+    on_prem_vpc             = false
+    file_gateway            = false
+    volume_gateway          = false
+    tape_gateway            = false
 
 
     ❯ terraform apply
@@ -68,21 +65,20 @@ There are three ways to use this module:
       profile  = "<<your-aws-cli-profile>>"
       region = "us-west-2"
 
-      
-      region_cloud9                 = false
-      outpost_cloud9                = false
-      emr                           = false 
-      memcached                     = false
-      redis                         = false
-      eks                           = false
-      eks_local_cluster             = false
-      eks_outpost_node_group        = false
-      eks_local_cluster_node_group  = false
-      mysql                         = false
-      postgres                      = false
-      on_prem_vpc                   = false
-      file_gateway                  = false
-      volume_gateway                = false
+      emr                     = false
+      memcached               = false
+      redis                   = false
+      eks                     = false
+      eks_on_outposts         = false
+      eks_outpost_node_group  = false
+      mysql                   = false
+      postgres                = false
+      on_prem_vpc             = false
+      file_gateway            = false
+      volume_gateway          = false
+      tape_gateway            = false
+
+    }
     ```
 
 ## Input variables
@@ -110,17 +106,44 @@ Set these flags to true to deploy the desired services.
 
 | Name | Default | Description |
 | ---- | ------- | ----------- |
-| region_cloud9 | `false` | Deploy a Cloud9 bastion in the main VPC in the Region. |
-| outpost_cloud9 | `false` | Deploy a Cloud9 bastion on the Outpost. |
 | emr | `false` | Deploy an EMR cluster on the Outpost. |
 | memcached | `false` | Deploy an ElastiCache Memcached instance on the Outpost. |
 | redis | `false` | Deploy an ElastiCache Redis instance on the Outpost. |
-| eks | `false` | Deploy an EKS cluster in the main VPC in the Region. |
-| eks_on_outposts | `false` | Deploy an EKS cluster on Outposts in the main VPC in the Region. |
-| eks_outpost_node_group | `false` | Deploy an EKS unmanaged node group on the Outpost and register the nodes with the EKS cluster deployed by the "eks" flag. |
+| eks | `false` | **EKS Extended Cluster:** Deploy an EKS cluster with the control plane in the Region and self-managed worker nodes on the Outpost. The cluster API endpoint is in the Region (v1.33). |
+| eks_cluster_on_outposts | `false` | **EKS Local Cluster:** Deploy an EKS cluster where both control plane AND data plane run on the Outpost. Operates independently during network disconnects from the Region (v1.32). |
+| eks_outpost_node_group | `false` | Deploy a self-managed EKS node group on the Outpost. Attaches to the Extended or Local cluster depending on which is enabled. |
 | mysql | `false` | Deploy an RDS MySQL instance on the Outpost. |
 | postgres | `false` | Deploy an RDS PostgreSQL instance on the Outpost. |
 | on_prem_vpc | `false` | Deploy a VPC to simulate an on-premises network in the region and to enable connectivity to on-premises networks. |
+
+## EKS Local Cluster on Outposts
+
+When `eks_cluster_on_outposts = true`, the module deploys:
+- EKS Local Cluster (control plane + data plane on Outpost, v1.32)
+- Self-managed node group (AL2023 + nodeadm)
+- Bastion instance (t3.micro, in-region, SSM-enabled with kubectl/eksctl/helm)
+
+**Post-deploy setup (2 commands from the bastion):**
+
+```bash
+# SSM into the bastion
+aws ssm start-session --target <bastion-instance-id> --region <region>
+
+# Run the pre-generated setup script
+./setup-kubeconfig.sh
+
+# Apply the pre-generated aws-auth ConfigMap
+kubectl apply -f ~/aws-auth.yaml
+```
+
+The node joins automatically within seconds. The bastion has `system:masters` access.
+
+**Key design decisions:**
+- **AL2023 + nodeadm** — AL2 is deprecated, no EKS 1.33 AMI available
+- **Cluster ID (UUID)** — Local cluster IAM authenticator requires `--cluster-id` not `--cluster-name`
+- **Hop limit 2** — Required for containerized kubelet to reach IMDS
+- **Bastion-based aws-auth** — Terraform cannot reach the private API endpoint; bastion is pre-configured with the correct YAML
+- **VPC endpoint cleanup** — GuardDuty creates endpoints that block subnet deletion on destroy
 
 ## Deployed services
 
@@ -146,8 +169,6 @@ username = "<<your-username>>"
 profile  = "<<your-aws-cli-profile>>"
 region = "us-west-2"
 
-region_cloud9           = false
-outpost_cloud9          = false
 emr                     = false 
 memcached               = false
 redis                   = false

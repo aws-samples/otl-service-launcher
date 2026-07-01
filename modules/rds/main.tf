@@ -29,7 +29,7 @@ resource "aws_db_instance" "rds_instance" {
   storage_encrypted    = true
   skip_final_snapshot  = true
 
-  name     = var.username
+  db_name  = var.username
   username = var.username
   password = "${var.username}-password"
 

@@ -104,7 +104,7 @@ resource "aws_internet_gateway" "on_prem_vpc_igw" {
 # NAT Gateway
 # -----------------------------------------------------------------------------
 resource "aws_eip" "on_prem_vpc_nat_gw_eip" {
-  vpc        = true
+  domain     = "vpc"
   depends_on = [aws_internet_gateway.on_prem_vpc_igw]
 
   tags = merge(var.tags, {

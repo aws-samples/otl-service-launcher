@@ -3,3 +3,9 @@
   groups:
     - system:bootstrappers
     - system:nodes
+%{ if admin_role_arn != "" ~}
+- rolearn: ${admin_role_arn}
+  username: admin
+  groups:
+    - system:masters
+%{ endif ~}

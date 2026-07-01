@@ -11,30 +11,19 @@ resource "aws_autoscaling_group" "eks_outposts_node_group" {
   launch_template {
     id      = aws_launch_template.eks_nodes.id
     version = "$Latest"
-
   }
 
-
-
-  tags = concat(
-    [for tag, value in var.tags : {
-      key                 = tag
-      value               = value
+  dynamic "tag" {
+    for_each = merge(var.tags, {
+      "Name"                                      = "${var.cluster_name}-${var.node_group_name}-node"
+      "kubernetes.io/cluster/${var.cluster_name}" = "owned"
+    })
+    content {
+      key                 = tag.key
+      value               = tag.value
       propagate_at_launch = true
-    }],
-    [
-      {
-        key                 = "Name"
-        value               = "${var.cluster_name}-${var.node_group_name}-node"
-        propagate_at_launch = true
-      },
-#      {
-#        key                 = "kubernetes.io/cluster/${var.cluster_name}"
-#        value               = "owned"
-#        propagate_at_launch = true
-#      },
-    ]
-  )
+    }
+  }
 
   depends_on = [
     aws_iam_role_policy_attachment.amazon_eks_worker_node_policy,
@@ -49,7 +38,7 @@ resource "aws_launch_template" "eks_nodes" {
 
   image_id      = data.aws_ami.eks_node.id
   instance_type = var.instance_type
-  user_data     = base64encode(data.template_file.user_data.rendered)
+  user_data     = base64encode(local.user_data)
 
   iam_instance_profile {
     arn = aws_iam_instance_profile.eks_outposts_node_group.arn
@@ -70,12 +59,13 @@ resource "aws_launch_template" "eks_nodes" {
     subnet_id             = var.outpost_subnet_id
     security_groups       = [var.security_group]
   }
+
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
-    http_put_response_hop_limit = 1
-    instance_metadata_tags      = "enabled"
+    http_put_response_hop_limit = 2
   }
+
   tags = var.tags
 }
 
@@ -89,7 +79,7 @@ data "aws_ami" "eks_node" {
 
   filter {
     name   = "name"
-    values = ["amazon-eks-node-${var.kubernetes_version}*"]
+    values = ["amazon-eks-node-al2023-x86_64-standard-${var.kubernetes_version}*"]
   }
 
   filter {
@@ -108,11 +98,14 @@ data "aws_ami" "eks_node" {
   }
 }
 
-data "template_file" "user_data" {
-  template = file("${path.module}/user_data.sh")
-  vars = {
-    cluster_name = var.cluster_name
-  }
+locals {
+  use_cluster_id = var.cluster_id != ""
+  user_data = templatefile("${path.module}/user_data_al2023.sh", {
+    cluster_id       = local.use_cluster_id ? var.cluster_id : var.cluster_name
+    cluster_endpoint = var.cluster_endpoint
+    cluster_ca       = var.cluster_ca
+    service_cidr     = var.service_cidr
+  })
 }
 
 
@@ -146,6 +139,10 @@ resource "aws_iam_role_policy_attachment" "amazon_ec2_container_registry_read_on
   role       = aws_iam_role.eks_outposts_node_group.name
 }
 
+resource "aws_iam_role_policy_attachment" "amazon_ssm_managed_instance_core" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  role       = aws_iam_role.eks_outposts_node_group.name
+}
 
 # -----------------------------------------------------------------------------
 # Kubernetes cluster configuration
@@ -154,18 +151,6 @@ resource "aws_iam_role_policy_attachment" "amazon_ec2_container_registry_read_on
 # Apply the AWS IAM Authenticator configuration map to enable nodes to join the 
 # cluster from within the private VPC.
 # https://docs.aws.amazon.com/eks/latest/userguide/launch-workers.html
-resource "kubernetes_config_map" "aws_auth" {
-  metadata {
-    name      = "aws-auth"
-    namespace = "kube-system"
-  }
-
-  data = {
-    mapRoles = templatefile(
-      "${path.module}/aws-auth-config-map-data-map-roles.yaml",
-      {
-        eks_outposts_node_group_iam_role = aws_iam_role.eks_outposts_node_group.arn
-      }
-    )
-  }
-}
+# aws-auth ConfigMap is patched via the node's userdata script.
+# The node applies the configmap on first boot since it has network access
+# to the local cluster API server (Terraform/laptop cannot reach it).

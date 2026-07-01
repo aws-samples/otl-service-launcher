@@ -27,6 +27,9 @@ variable "cluster_subnet_ids" {
   type = list(string)
 }
 
+# -----------------------------------------------------------------------------
+# EKS  Local Cluster variables
+# -----------------------------------------------------------------------------
 variable "instance_type" {
   type = string
 }

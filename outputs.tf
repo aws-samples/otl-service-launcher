@@ -41,11 +41,11 @@ output "eks_cluster_ca_cert" {
 # EKS Local Cluster
 # -----------------------------------------------------------------------------
 output "eks_local_cluster_endpoint" {
-  value = concat(module.eks_local_cluster[*].local_cluster_endpoint, [""])[0]
+  value = concat(module.eks_on_outposts[*].cluster_endpoint, [""])[0]
 }
 
 output "eks_local_cluster_ca_cert" {
-  value     = concat(module.eks_local_cluster[*].local_cluster_ca_cert, [""])[0]
+  value     = concat(module.eks_on_outposts[*].cluster_ca_cert, [""])[0]
   sensitive = true
 }
 

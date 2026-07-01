@@ -83,3 +83,30 @@ variable "volume_size" {
   type    = number
   default = 20
 }
+
+variable "cluster_endpoint" {
+  type    = string
+  default = ""
+}
+
+variable "cluster_ca" {
+  type    = string
+  default = ""
+}
+
+variable "service_cidr" {
+  type    = string
+  default = "172.20.0.0/16"
+}
+
+variable "cluster_id" {
+  description = "The EKS cluster UUID (required for local clusters, use cluster ID not name)"
+  type    = string
+  default = ""
+}
+
+variable "admin_role_arn" {
+  description = "IAM role ARN to grant system:masters access in aws-auth (e.g., bastion role)"
+  type    = string
+  default = ""
+}
